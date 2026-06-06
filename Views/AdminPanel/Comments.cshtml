@@ -1,0 +1,73 @@
+@model Blogger_website.Models.ViewModels.CommentsAdminViewModel
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2>@(Model.IsSuperAdmin ? "All Comments" : "Comments on My Blogs") (@Model.Comments.Count)</h2>
+    </div>
+    <div class="admin-card-body">
+        @if (!Model.Comments.Any())
+        {
+            <div class="empty-state" style="border:none;margin:1rem;"><p>No comments yet.</p></div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Author</th>
+                            <th>Comment</th>
+                            <th>Blog</th>
+                            <th>Type</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var c in Model.Comments)
+                        {
+                            <tr>
+                                <td><strong>@c.AuthorName</strong></td>
+                                <td style="max-width:280px;">@(c.Content.Length > 80 ? c.Content[..80] + "…" : c.Content)</td>
+                                <td>@(c.BlogTitle ?? $"#{c.BlogId}")</td>
+                                <td>
+                                    @if (c.ParentId.HasValue)
+                                    { <span class="badge badge-primary">Reply</span> }
+                                    else
+                                    { <span class="badge badge-success">Comment</span> }
+                                </td>
+                                <td>
+                                    @if (c.IsApproved)
+                                    { <span class="badge badge-success">Visible</span> }
+                                    else
+                                    { <span class="badge badge-warning">Hidden</span> }
+                                </td>
+                                <td>@c.CreatedAt.ToString("dd MMM yyyy")</td>
+                                <td>
+                                    <div class="table-actions">
+                                        @if (Model.IsSuperAdmin)
+                                        {
+                                            <form asp-action="ToggleCommentApproval" method="post" style="display:inline;">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="id" value="@c.Id" />
+                                                <input type="hidden" name="isApproved" value="@(!c.IsApproved ? "true" : "false")" />
+                                                <button type="submit" class="btn-ghost btn-sm">@(c.IsApproved ? "Hide" : "Show")</button>
+                                            </form>
+                                        }
+                                        <form asp-action="DeleteComment" method="post" style="display:inline;"
+                                              onsubmit="return confirm('Delete this comment and its replies?');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@c.Id" />
+                                            <button type="submit" class="btn-ghost btn-sm" style="color:var(--danger);">Delete</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

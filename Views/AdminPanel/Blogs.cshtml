@@ -1,0 +1,72 @@
+@model Blogger_website.Models.ViewModels.AdminBlogListViewModel
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2>@(Model.IsSuperAdmin ? "All Blogs" : "My Blogs") (@Model.Blogs.Count)</h2>
+        <a asp-action="Create" class="btn-brand btn-sm">+ New Blog</a>
+    </div>
+    <div class="admin-card-body">
+        @if (!Model.Blogs.Any())
+        {
+            <div class="empty-state" style="border:none;margin:1rem;">
+                <h3>No blogs yet</h3>
+                <a asp-action="Create" class="btn-brand btn-sm">Create your first blog</a>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Title</th>
+                            @if (Model.IsSuperAdmin) { <th>Author</th> }
+                            <th>Category</th>
+                            <th>Labels</th>
+                            <th>Status</th>
+                            <th>Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var blog in Model.Blogs)
+                        {
+                            <tr>
+                                <td><strong>@blog.Title</strong></td>
+                                @if (Model.IsSuperAdmin) { <td>@(blog.AuthorName ?? "—")</td> }
+                                <td>@(blog.CategoryPath ?? blog.CategoryName ?? "—")</td>
+                                <td>
+                                    @foreach (var lbl in blog.Labels)
+                                    {
+                                        <span class="label-chip">@lbl.Name</span>
+                                    }
+                                </td>
+                                <td>
+                                    @if (blog.IsPublished)
+                                    { <span class="badge badge-success">Published</span> }
+                                    else
+                                    { <span class="badge badge-warning">Draft</span> }
+                                </td>
+                                <td>@blog.CreatedAt.ToString("dd MMM yyyy")</td>
+                                <td>
+                                    <div class="table-actions">
+                                        <a asp-action="Edit" asp-route-id="@blog.Id" class="btn-ghost btn-sm">Edit</a>
+                                        @if (blog.IsPublished)
+                                        {
+                                            <a asp-controller="Blog" asp-action="Details" asp-route-slug="@blog.Slug" target="_blank" class="btn-ghost btn-sm">View</a>
+                                        }
+                                        <form asp-action="Delete" asp-route-id="@blog.Id" method="post" style="display:inline;"
+                                              onsubmit="return confirm('Delete this blog?');">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn-ghost btn-sm" style="color:var(--danger);">Delete</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

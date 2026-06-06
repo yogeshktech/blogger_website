@@ -1,0 +1,54 @@
+@model (Blogger_website.Models.Entities.Comment Comment, Blogger_website.Models.Entities.Blog Blog, bool CanModerate, int Depth)
+
+@{
+    var comment = Model.Comment;
+    var blog = Model.Blog;
+    var avatar = comment.AuthorName.Length > 0 ? comment.AuthorName[..1].ToUpper() : "?";
+    var margin = Model.Depth * 1.75;
+}
+
+<div class="comment-item @(Model.Depth > 0 ? "comment-reply" : "")" style="@(Model.Depth > 0 ? $"margin-left:{margin}rem;" : "")">
+    <div class="comment-avatar">@avatar</div>
+    <div class="comment-body">
+        <div class="comment-head">
+            <strong>@comment.AuthorName</strong>
+            @if (Model.Depth > 0)
+            {
+                <span class="comment-reply-badge">Reply</span>
+            }
+            <time>@comment.CreatedAt.ToString("dd MMM yyyy, HH:mm")</time>
+        </div>
+        <p>@comment.Content</p>
+        <div class="comment-actions">
+            @if (Model.CanModerate)
+            {
+                <form asp-controller="Blog" asp-action="DeleteComment" method="post" style="display:inline;"
+                      onsubmit="return confirm('Delete this comment and its replies?');">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="id" value="@comment.Id" />
+                    <input type="hidden" name="slug" value="@blog.Slug" />
+                    <button type="submit" class="btn-ghost btn-sm" style="color:var(--danger);">Delete</button>
+                </form>
+            }
+        </div>
+
+        <details class="comment-reply-details">
+            <summary class="comment-reply-summary">Reply</summary>
+            <form asp-controller="Blog" asp-action="AddComment" method="post" class="comment-reply-form">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="blogId" value="@blog.Id" />
+                <input type="hidden" name="slug" value="@blog.Slug" />
+                <input type="hidden" name="parentId" value="@comment.Id" />
+                <div class="form-group">
+                    <textarea name="content" class="form-control" rows="3" required placeholder="Write a reply..."></textarea>
+                </div>
+                <button type="submit" class="btn-brand btn-sm">Post Reply</button>
+            </form>
+        </details>
+
+        @foreach (var reply in comment.Replies)
+        {
+            @await Html.PartialAsync("_CommentThread", (reply, blog, Model.CanModerate, Model.Depth + 1))
+        }
+    </div>
+</div>

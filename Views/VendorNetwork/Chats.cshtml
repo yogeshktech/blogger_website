@@ -1,0 +1,36 @@
+@model Blogger_website.Models.ViewModels.VendorChatsViewModel
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2>My Chats (@Model.Threads.Count)</h2>
+        <a asp-action="Vendors" class="btn-ghost btn-sm">Find Vendors</a>
+    </div>
+    <div class="admin-card-body">
+        @if (!Model.Threads.Any())
+        {
+            <div class="empty-state" style="border:none;margin:1rem;">
+                <p>No chats yet. Connect with a vendor first.</p>
+                <a asp-action="Vendors" class="btn-brand btn-sm">Browse Vendors</a>
+            </div>
+        }
+        else
+        {
+            <div class="vendor-chat-list">
+                @foreach (var t in Model.Threads)
+                {
+                    <a asp-action="Chat" asp-route-id="@t.Id" class="vendor-chat-list-item">
+                        <div class="vendor-chat-list-avatar">@(t.OtherUserName?.Length > 0 ? t.OtherUserName[0].ToString().ToUpper() : "V")</div>
+                        <div class="vendor-chat-list-body">
+                            <strong>@t.OtherUserName</strong>
+                            <p>@(string.IsNullOrWhiteSpace(t.LastMessage) ? "No messages yet" : (t.LastMessage.Length > 60 ? t.LastMessage[..60] + "…" : t.LastMessage))</p>
+                        </div>
+                        @if (t.LastMessageAt.HasValue)
+                        {
+                            <time>@t.LastMessageAt.Value.ToString("dd MMM HH:mm")</time>
+                        }
+                    </a>
+                }
+            </div>
+        }
+    </div>
+</div>

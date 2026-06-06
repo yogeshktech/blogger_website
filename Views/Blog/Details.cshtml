@@ -1,0 +1,95 @@
+@model Blogger_website.Models.ViewModels.BlogDetailViewModel
+@using Blogger_website.Models.Helpers
+@{
+    ViewData["Title"] = Model.Blog.Title;
+    var blog = Model.Blog;
+}
+
+<article class="article-wrap">
+    <a asp-action="Index" class="article-back">← Back to Blogs</a>
+
+    @if (!string.IsNullOrEmpty(blog.FeaturedImage))
+    {
+        <div class="article-hero-img">
+            <img src="@blog.FeaturedImage" alt="@blog.Title" />
+        </div>
+    }
+
+    @if (!string.IsNullOrEmpty(blog.CategoryPath))
+    { <span class="article-tag">@blog.CategoryPath</span> }
+
+    @if (blog.Labels.Any())
+    {
+        <div class="label-chips" style="margin-bottom:1rem;">
+            @foreach (var lbl in blog.Labels)
+            {
+                <span class="label-chip">@lbl.Name</span>
+            }
+        </div>
+    }
+
+    <h1 class="article-title">@blog.Title</h1>
+    <div class="article-meta">
+        <span>✍ @(blog.AuthorName ?? "Unknown")</span>
+        <span>📅 @blog.CreatedAt.ToString("dd MMMM yyyy")</span>
+    </div>
+
+    @{
+        var shareUrl = BlogEngagementHelper.BuildShareUrl(Context, blog.Slug);
+    }
+    @await Html.PartialAsync("_BlogLikeShare", (blog.Id, blog.Slug, blog.Title, blog.LikeCount, blog.IsLikedByViewer, shareUrl, false))
+
+    @if (!string.IsNullOrEmpty(blog.ShortDescription))
+    { <p class="article-lead">@blog.ShortDescription</p> }
+
+    <div class="article-content">
+        @Html.Raw(blog.Content.Replace("\n", "<br/>"))
+    </div>
+
+    <section class="comments-section">
+        <h3>Comments (@Model.TotalCommentCount)</h3>
+
+        @if (TempData["CommentMessage"] != null)
+        {
+            <div class="alert alert-success" data-auto-dismiss>@TempData["CommentMessage"]</div>
+        }
+
+        @foreach (var thread in Model.CommentThreads)
+        {
+            @await Html.PartialAsync("_CommentThread", (thread, blog, Model.CanModerateComments, 0))
+        }
+
+        <div class="comment-form">
+            <h4>Leave a Comment</h4>
+            <form asp-action="AddComment" method="post">
+                @Html.AntiForgeryToken()
+                <input type="hidden" name="blogId" value="@blog.Id" />
+                <input type="hidden" name="slug" value="@blog.Slug" />
+
+                @if (!User.Identity?.IsAuthenticated ?? true)
+                {
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Your Name</label>
+                            <input type="text" name="authorName" class="form-control" required placeholder="John Doe" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email (optional)</label>
+                            <input type="email" name="authorEmail" class="form-control" placeholder="you@email.com" />
+                        </div>
+                    </div>
+                }
+
+                <div class="form-group">
+                    <label class="form-label">Your Comment</label>
+                    <textarea name="content" class="form-control" rows="4" required placeholder="Share your thoughts..."></textarea>
+                </div>
+                <button type="submit" class="btn-brand">Post Comment</button>
+            </form>
+        </div>
+    </section>
+</article>
+
+@section Scripts {
+    <script src="~/js/blog-engage.js" asp-append-version="true"></script>
+}

@@ -1,0 +1,72 @@
+@model Blogger_website.Models.ViewModels.VendorRequestsViewModel
+
+<div class="admin-card" style="margin-bottom:1.5rem;">
+    <div class="admin-card-header"><h2>Incoming Requests (@Model.Incoming.Count)</h2></div>
+    <div class="admin-card-body">
+        @if (!Model.Incoming.Any())
+        {
+            <div class="empty-state" style="border:none;margin:1rem;"><p>No incoming requests.</p></div>
+        }
+        else
+        {
+            @foreach (var r in Model.Incoming)
+            {
+                <div class="vendor-request-card">
+                    <div>
+                        <strong>@r.FromUserName</strong>
+                        <span style="color:var(--text-muted);font-size:0.85rem;"> · @r.FromUserEmail</span>
+                        @if (!string.IsNullOrWhiteSpace(r.IntroMessage))
+                        {
+                            <p style="margin:0.5rem 0 0;color:#475569;">"@r.IntroMessage"</p>
+                        }
+                        <time style="font-size:0.78rem;color:var(--text-muted);">@r.CreatedAt.ToString("dd MMM yyyy HH:mm")</time>
+                    </div>
+                    <div class="table-actions">
+                        <form asp-action="AcceptRequest" method="post" style="display:inline;">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@r.Id" />
+                            <button type="submit" class="btn-brand btn-sm">Accept</button>
+                        </form>
+                        <form asp-action="RejectRequest" method="post" style="display:inline;">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="id" value="@r.Id" />
+                            <button type="submit" class="btn-ghost btn-sm" style="color:var(--danger);">Reject</button>
+                        </form>
+                    </div>
+                </div>
+            }
+        }
+    </div>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header"><h2>Sent Requests (@Model.Outgoing.Count)</h2></div>
+    <div class="admin-card-body">
+        @if (!Model.Outgoing.Any())
+        {
+            <div class="empty-state" style="border:none;margin:1rem;"><p>No sent requests.</p></div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead><tr><th>To</th><th>Message</th><th>Sent</th></tr></thead>
+                    <tbody>
+                        @foreach (var r in Model.Outgoing)
+                        {
+                            <tr>
+                                <td><strong>@r.ToUserName</strong><br/><span style="font-size:0.8rem;color:var(--text-muted);">@r.ToUserEmail</span></td>
+                                <td>@(r.IntroMessage ?? "—")</td>
+                                <td>@r.CreatedAt.ToString("dd MMM yyyy")</td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>
+
+<div style="margin-top:1rem;">
+    <a asp-action="Vendors" class="btn-ghost btn-sm">← Back to Vendor Network</a>
+</div>

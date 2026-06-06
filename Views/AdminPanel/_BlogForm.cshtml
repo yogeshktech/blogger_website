@@ -1,0 +1,102 @@
+@model Blogger_website.Models.ViewModels.BlogFormViewModel
+@using System.Text.Json
+
+<div class="form-group">
+    <label class="form-label">Title *</label>
+    <input asp-for="Title" class="form-control" required placeholder="Enter blog title" />
+</div>
+
+<div class="form-group">
+    <label class="form-label">Short Description</label>
+    <input asp-for="ShortDescription" class="form-control" placeholder="Brief summary for listing page" />
+</div>
+
+<div class="form-group">
+    <label class="form-label">Content *</label>
+    <textarea asp-for="Content" class="form-control" rows="12" required placeholder="Write your blog content here..."></textarea>
+</div>
+
+<div class="form-group">
+    <label class="form-label">Category Path</label>
+    <p style="font-size:0.8rem;color:var(--text-muted);margin:0 0 0.75rem;">Select Category → Sub Category → Child Category (e.g. Study › PHP › Interview Questions)</p>
+    <div class="form-row">
+        <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Category</label>
+            <select id="catLevel1" class="form-control">
+                <option value="">— Select Category —</option>
+                @foreach (var cat in Model.RootCategories)
+                {
+                    <option value="@cat.Id">@cat.Name</option>
+                }
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Sub Category</label>
+            <select id="catLevel2" class="form-control" disabled>
+                <option value="">— Select Sub Category —</option>
+            </select>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+            <label class="form-label">Child Category</label>
+            <select id="catLevel3" class="form-control" disabled>
+                <option value="">— Select Child Category —</option>
+            </select>
+        </div>
+    </div>
+    <input type="hidden" asp-for="CategoryId" id="finalCategoryId" />
+    <div id="categoryPathPreview" style="font-size:0.85rem;color:var(--primary);margin-top:0.5rem;font-weight:600;"></div>
+</div>
+
+<div class="form-group">
+    <label class="form-label">Labels / Tags</label>
+    <p style="font-size:0.8rem;color:var(--text-muted);margin:0 0 0.75rem;">Add any tags: Study, Jokes, Comedy, News, Interview, Laravel, React, Node.js, etc.</p>
+    @if (!Model.Labels.Any())
+    {
+        <p style="color:var(--text-muted);font-size:0.875rem;">No labels yet. SuperAdmin can add labels from Admin → Labels.</p>
+    }
+    else
+    {
+        <div style="display:flex;flex-wrap:wrap;gap:0.5rem;">
+            @foreach (var label in Model.Labels)
+            {
+                var checkedAttr = Model.SelectedLabelIds.Contains(label.Id) ? "checked" : "";
+                <label class="badge badge-primary" style="cursor:pointer;padding:0.45rem 0.85rem;">
+                    <input type="checkbox" name="SelectedLabelIds" value="@label.Id" @checkedAttr style="margin-right:0.35rem;" />
+                    @label.Name
+                </label>
+            }
+        </div>
+    }
+</div>
+
+<div class="form-row">
+    <div class="form-group">
+        <label class="form-label">Featured Image</label>
+        <input type="file" name="featuredImage" class="form-control" accept="image/*" />
+    </div>
+</div>
+
+@if (!string.IsNullOrEmpty(Model.FeaturedImage))
+{
+    <div class="img-preview">
+        <img src="@Model.FeaturedImage" alt="Current image" />
+    </div>
+}
+
+<div class="form-group" style="margin-top:1rem;">
+    <label class="form-check">
+        <input asp-for="IsPublished" type="checkbox" />
+        <span>Publish immediately</span>
+    </label>
+</div>
+
+<div style="display:flex;gap:0.75rem;margin-top:1.5rem;flex-wrap:wrap;">
+    <button type="submit" class="btn-brand">@(Model.Id.HasValue ? "Save Changes" : "Create Blog")</button>
+    <a asp-action="Blogs" class="btn-ghost">Cancel</a>
+</div>
+
+<script>
+    window.__categoriesFlat = @Html.Raw(JsonSerializer.Serialize(Model.CategoriesFlat.Select(c => new { c.Id, c.Name, c.ParentId, c.FullPath })));
+    window.__selectedCategoryId = @(Model.CategoryId?.ToString() ?? "null");
+</script>
+<script src="~/js/category-picker.js" asp-append-version="true"></script>

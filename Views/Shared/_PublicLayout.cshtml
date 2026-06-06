@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - BlogHub</title>
+    <link rel="stylesheet" href="~/css/app.css" asp-append-version="true" />
+    @await RenderSectionAsync("Styles", required: false)
+</head>
+<body>
+    <header class="site-header">
+        <nav class="site-nav">
+            <a class="site-logo" asp-controller="Home" asp-action="Index">BlogHub</a>
+            <button class="nav-toggle" id="navToggle" aria-label="Menu">☰</button>
+            <div class="site-menu" id="siteMenu">
+                <ul class="site-links">
+                    <li><a asp-controller="Home" asp-action="Index" class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Home" ? "active" : "")">Home</a></li>
+                    <li><a asp-controller="Blog" asp-action="Index" class="@(ViewContext.RouteData.Values["controller"]?.ToString() == "Blog" ? "active" : "")">Blogs</a></li>
+                </ul>
+                <div class="site-actions">
+                    @if (User.IsInRole("Blogger") || User.IsInRole("SuperAdmin"))
+                    {
+                        <a asp-controller="AdminPanel" asp-action="Index" class="btn-outline-brand btn-sm">Dashboard</a>
+                    }
+                    @if (User.Identity?.IsAuthenticated == true)
+                    {
+                        <form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index","Home")" method="post" style="display:inline;">
+                            @Html.AntiForgeryToken()
+                            <button type="submit" class="btn-ghost btn-sm">Logout</button>
+                        </form>
+                    }
+                    else
+                    {
+                        <a asp-area="Identity" asp-page="/Account/Login" class="btn-ghost btn-sm">Login</a>
+                        <a asp-area="Identity" asp-page="/Account/Register" class="btn-brand btn-sm">Write Blogs</a>
+                    }
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        @RenderBody()
+    </main>
+
+    <footer class="site-footer">
+        <div class="footer-inner">
+            <div>
+                <strong style="color:#fff;">BlogHub</strong> &mdash; Read, write, and share stories.
+            </div>
+            <div>
+                <a asp-controller="Home" asp-action="Privacy">Privacy</a>
+            </div>
+        </div>
+    </footer>
+
+    <script src="~/js/app.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>

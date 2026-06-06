@@ -1,0 +1,59 @@
+﻿@page
+@model RegisterModel
+@{
+    ViewData["Title"] = "Admin Register";
+    Layout = "/Views/Shared/_AuthLayout.cshtml";
+}
+
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-logo">
+            <h1>BlogHub</h1>
+            <p>Create your admin account</p>
+        </div>
+
+        <div class="alert alert-info" style="font-size:0.85rem;">
+            After register, a 6-digit OTP will be sent to your email for verification.
+            SuperAdmin will approve your account before you can publish blogs.
+        </div>
+
+        <form id="registerForm" asp-route-returnUrl="@Model.ReturnUrl" method="post">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+            <div class="form-group">
+                <label asp-for="Input.FullName" class="form-label">Full Name</label>
+                <input asp-for="Input.FullName" class="form-control" autocomplete="name" placeholder="Your full name" />
+                <span asp-validation-for="Input.FullName" class="text-danger" style="font-size:0.8rem;"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Input.Email" class="form-label">Email</label>
+                <input asp-for="Input.Email" class="form-control" autocomplete="username" placeholder="you@email.com" />
+                <span asp-validation-for="Input.Email" class="text-danger" style="font-size:0.8rem;"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Input.Password" class="form-label">Password</label>
+                <input asp-for="Input.Password" class="form-control" autocomplete="new-password" placeholder="Min 6 characters" />
+                <span asp-validation-for="Input.Password" class="text-danger" style="font-size:0.8rem;"></span>
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Input.ConfirmPassword" class="form-label">Confirm Password</label>
+                <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" placeholder="Repeat password" />
+                <span asp-validation-for="Input.ConfirmPassword" class="text-danger" style="font-size:0.8rem;"></span>
+            </div>
+
+            <button type="submit" class="btn-brand" style="width:100%;">Register as Admin</button>
+        </form>
+
+        <div class="auth-footer">
+            <p>Already have an account? <a asp-page="./Login">Sign in</a></p>
+            <p style="margin-top:0.75rem;"><a asp-controller="Home" asp-action="Index" style="font-weight:500;color:var(--text-muted);">← Back to site</a></p>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

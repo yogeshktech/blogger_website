@@ -1,0 +1,152 @@
+@model Blogger_website.Models.ViewModels.BlogListViewModel
+@using Blogger_website.Models.Helpers
+
+@{
+
+    ViewData["Title"] = "Blogs";
+
+}
+
+
+
+<section class="section" style="padding-top:2.5rem;">
+
+    <div class="section-header">
+
+        <div>
+
+            <h2>All Blogs</h2>
+
+            <p>@Model.Blogs.Count article@(Model.Blogs.Count != 1 ? "s" : "") found</p>
+
+        </div>
+
+    </div>
+
+
+
+    @if (Model.CategoryTree.Any())
+
+    {
+
+        <div style="margin-bottom:0.75rem;font-size:0.8rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Categories</div>
+
+        @await Html.PartialAsync("_CategoryTreeNav", (Model.CategoryTree, Model.SelectedCategoryId, "Blog", "Index", Model.SelectedLabelId))
+
+    }
+
+
+
+    @if (Model.Labels.Any())
+
+    {
+
+        <div style="margin:1.25rem 0 0.75rem;font-size:0.8rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Labels / Tags</div>
+
+        <div class="category-pills">
+
+            <a asp-action="Index" asp-route-categoryId="@Model.SelectedCategoryId" class="category-pill @(Model.SelectedLabelId == null ? "active" : "")">All</a>
+
+            @foreach (var label in Model.Labels)
+
+            {
+
+                <a asp-action="Index" asp-route-labelId="@label.Id" asp-route-categoryId="@Model.SelectedCategoryId"
+
+                   class="category-pill @(Model.SelectedLabelId == label.Id ? "active" : "")">@label.Name</a>
+
+            }
+
+        </div>
+
+    }
+
+
+
+    @if (!Model.Blogs.Any())
+
+    {
+
+        <div class="empty-state">
+
+            <h3>No blogs found</h3>
+
+            <p>Try a different category or label filter.</p>
+
+        </div>
+
+    }
+
+    else
+
+    {
+
+        <div class="blog-grid" style="margin-top:2rem;">
+
+            @foreach (var blog in Model.Blogs)
+
+            {
+
+                <article class="blog-card">
+
+                    <div class="blog-card-img">
+
+                        @if (!string.IsNullOrEmpty(blog.FeaturedImage))
+
+                        { <img src="@blog.FeaturedImage" alt="@blog.Title" loading="lazy" /> }
+
+                    </div>
+
+                    <div class="blog-card-body">
+
+                        @if (!string.IsNullOrEmpty(blog.CategoryPath))
+
+                        { <span class="blog-card-tag">@blog.CategoryPath</span> }
+
+                        <h3>@blog.Title</h3>
+
+                        <p>@(blog.ShortDescription ?? "")</p>
+
+                        @if (blog.Labels.Any())
+
+                        {
+
+                            <div class="label-chips">
+
+                                @foreach (var lbl in blog.Labels)
+
+                                {
+
+                                    <span class="label-chip">@lbl.Name</span>
+
+                                }
+
+                            </div>
+
+                        }
+
+                        <div class="blog-card-meta">
+
+                            <span>@(blog.AuthorName ?? "Unknown") · @blog.CreatedAt.ToString("dd MMM yyyy")</span>
+
+                            <a asp-action="Details" asp-route-slug="@blog.Slug" class="read-link">Read →</a>
+
+                        </div>
+
+                        @await Html.PartialAsync("_BlogLikeShare", (blog.Id, blog.Slug, blog.Title, blog.LikeCount, blog.IsLikedByViewer, BlogEngagementHelper.BuildShareUrl(Context, blog.Slug), true))
+
+                    </div>
+
+                </article>
+
+            }
+
+        </div>
+
+    }
+
+</section>
+
+@section Scripts {
+    <script src="~/js/blog-engage.js" asp-append-version="true"></script>
+}

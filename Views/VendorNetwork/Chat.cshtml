@@ -1,0 +1,31 @@
+@model Blogger_website.Models.ViewModels.VendorChatViewModel
+
+<div class="admin-card vendor-chat-room">
+    <div class="admin-card-header">
+        <div>
+            <a asp-action="Chats" class="btn-ghost btn-sm" style="margin-bottom:0.35rem;">← All Chats</a>
+            <h2 style="margin:0;">Chat with @Model.OtherUserName</h2>
+        </div>
+    </div>
+    <div class="vendor-chat-messages" id="chatMessages" data-thread-id="@Model.Thread.Id" data-last-id="@(Model.Messages.LastOrDefault()?.Id ?? 0)">
+        @foreach (var msg in Model.Messages)
+        {
+            <div class="vendor-chat-bubble @(msg.IsMine ? "mine" : "theirs")" data-id="@msg.Id">
+                <div class="vendor-chat-meta">@(msg.IsMine ? "You" : msg.SenderName) · @msg.CreatedAt.ToString("dd MMM HH:mm")</div>
+                <div class="vendor-chat-text">@msg.Content</div>
+            </div>
+        }
+    </div>
+    <div class="vendor-chat-compose">
+        <form asp-action="SendMessage" method="post" id="chatForm">
+            @Html.AntiForgeryToken()
+            <input type="hidden" name="threadId" value="@Model.Thread.Id" />
+            <textarea name="content" id="chatInput" class="form-control" rows="2" required placeholder="Type a message..."></textarea>
+            <button type="submit" class="btn-brand">Send</button>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="~/js/vendor-chat.js" asp-append-version="true"></script>
+}

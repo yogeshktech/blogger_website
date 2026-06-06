@@ -1,0 +1,50 @@
+@model Blogger_website.Models.ViewModels.PendingAdminsViewModel
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2>Pending Admin Registrations (@Model.Pending.Count)</h2>
+    </div>
+    <div class="admin-card-body">
+        @if (!Model.Pending.Any())
+        {
+            <div class="empty-state" style="border:none;margin:1rem;">
+                <h3>No pending registrations</h3>
+                <p>All admin accounts have been reviewed.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead>
+                        <tr><th>Name</th><th>Email</th><th>Actions</th></tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var user in Model.Pending)
+                        {
+                            <tr>
+                                <td><strong>@(user.FullName ?? "—")</strong></td>
+                                <td>@user.Email</td>
+                                <td>
+                                    <div class="table-actions">
+                                        <form asp-action="Approve" method="post" style="display:inline;">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="userId" value="@user.Id" />
+                                            <button type="submit" class="btn-brand btn-sm">Approve</button>
+                                        </form>
+                                        <form asp-action="Reject" method="post" style="display:inline;"
+                                              onsubmit="return confirm('Reject and delete this registration?');">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="userId" value="@user.Id" />
+                                            <button type="submit" class="btn-ghost btn-sm" style="color:var(--danger);">Reject</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

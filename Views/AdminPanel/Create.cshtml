@@ -1,0 +1,17 @@
+@model Blogger_website.Models.ViewModels.BlogFormViewModel
+@{
+    var isEdit = Model.Id.HasValue;
+    ViewData["Title"] = isEdit ? "Edit Blog" : "New Blog";
+}
+
+<div class="admin-card" style="max-width:800px;">
+    <div class="admin-card-header">
+        <h2>@(isEdit ? "Edit Blog" : "Create New Blog")</h2>
+    </div>
+    <div style="padding:1.5rem;">
+        <form asp-action="@(isEdit ? "Edit" : "Create")" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+            @await Html.PartialAsync("_BlogForm", Model)
+        </form>
+    </div>
+</div>

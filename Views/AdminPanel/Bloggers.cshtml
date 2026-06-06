@@ -1,0 +1,42 @@
+@model Blogger_website.Models.ViewModels.BloggersViewModel
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2>All Bloggers (@Model.Bloggers.Count)</h2>
+    </div>
+    <div class="admin-card-body">
+        <div class="table-responsive">
+            <table class="admin-table">
+                <thead>
+                    <tr><th>Name</th><th>Email</th><th>Blogs</th><th>Status</th><th>Actions</th></tr>
+                </thead>
+                <tbody>
+                    @foreach (var user in Model.Bloggers)
+                    {
+                        <tr>
+                            <td><strong>@(user.FullName ?? "—")</strong></td>
+                            <td>@user.Email</td>
+                            <td>@user.BlogCount</td>
+                            <td>
+                                @if (user.IsActive)
+                                { <span class="badge badge-success">Active</span> }
+                                else
+                                { <span class="badge badge-warning">Pending</span> }
+                            </td>
+                            <td>
+                                <form asp-action="ToggleStatus" method="post" style="display:inline;">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="userId" value="@user.Id" />
+                                    <input type="hidden" name="isActive" value="@(!user.IsActive ? "true" : "false")" />
+                                    <button type="submit" class="btn-ghost btn-sm">
+                                        @(user.IsActive ? "Deactivate" : "Activate")
+                                    </button>
+                                </form>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,44 @@
+﻿@using Blogger_website.Models.Constants
+@{
+    var isAdminUser = User.IsInRole(AppRoles.SuperAdmin) || User.IsInRole(AppRoles.Blogger);
+    Layout = isAdminUser
+        ? "/Views/Shared/_AdminLayout.cshtml"
+        : "/Areas/Identity/Pages/_Layout.cshtml";
+}
+
+@if (isAdminUser)
+{
+    <div class="admin-card">
+        <div class="admin-card-header">
+            <h2>Account Settings</h2>
+        </div>
+        <div class="admin-card-body manage-settings-body">
+            <nav class="manage-settings-nav">
+                <partial name="_ManageNav" />
+            </nav>
+            <div class="manage-settings-content">
+                @RenderBody()
+            </div>
+        </div>
+    </div>
+}
+else
+{
+    <h1>Manage your account</h1>
+    <div>
+        <h2>Change your account settings</h2>
+        <hr />
+        <div class="row">
+            <div class="col-md-3">
+                <partial name="_ManageNav" />
+            </div>
+            <div class="col-md-9">
+                @RenderBody()
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    @RenderSection("Scripts", required: false)
+}

@@ -1,0 +1,95 @@
+@model Blogger_website.Models.ViewModels.CategoriesAdminViewModel
+
+<div class="admin-card" style="margin-bottom:1.5rem;">
+    <div class="admin-card-header"><h2>Add Category / Sub / Child</h2></div>
+    <div style="padding:1.25rem;">
+        <form asp-action="AddCategory" method="post">
+            @Html.AntiForgeryToken()
+            <div class="form-row">
+                <div class="form-group">
+                    <label class="form-label">Name *</label>
+                    <input type="text" name="name" class="form-control" required placeholder="Study, PHP, Interview Questions, Jokes, News..." />
+                </div>
+                <div class="form-group">
+                    <label class="form-label">Parent (optional)</label>
+                    <select name="parentId" class="form-control">
+                        <option value="">— Root Category —</option>
+                        @foreach (var cat in Model.CategoriesFlat.OrderBy(c => c.FullPath))
+                        {
+                            <option value="@cat.Id">@cat.FullPath (@cat.LevelName)</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <p style="font-size:0.8rem;color:var(--text-muted);margin:0.5rem 0 1rem;">
+                Examples: Study → PHP → Interview Questions · Comedy → Jokes · News (root)
+            </p>
+            <button type="submit" class="btn-brand btn-sm">Add Category</button>
+        </form>
+    </div>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header"><h2>All Categories (@Model.CategoriesFlat.Count)</h2></div>
+    <div class="admin-card-body">
+        @if (!Model.CategoriesFlat.Any())
+        {
+            <div class="empty-state" style="border:none;margin:1rem;"><p>No categories yet.</p></div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Full Path</th>
+                            <th>Level</th>
+                            <th>Status</th>
+                            @if (Model.IsSuperAdmin)
+                            {
+                                <th colspan="2">Edit</th>
+                            }
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var cat in Model.CategoriesFlat.OrderBy(c => c.FullPath))
+                        {
+                            <tr>
+                                <td><strong>@cat.FullPath</strong></td>
+                                <td><span class="badge badge-primary">@cat.LevelName</span></td>
+                                <td>
+                                    @if (cat.IsActive) { <span class="badge badge-success">Active</span> }
+                                    else { <span class="badge badge-danger">Inactive</span> }
+                                </td>
+                                @if (Model.IsSuperAdmin)
+                                {
+                                    <td colspan="2">
+                                        <form asp-action="UpdateCategory" method="post" style="display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="id" value="@cat.Id" />
+                                            <input type="text" name="name" value="@cat.Name" class="form-control" style="max-width:160px;" />
+                                            <select name="parentId" class="form-control" style="max-width:180px;">
+                                                <option value="">— Root —</option>
+                                                @foreach (var p in Model.CategoriesFlat.Where(p => p.Id != cat.Id).OrderBy(p => p.FullPath))
+                                                {
+                                                    <option value="@p.Id" selected="@(cat.ParentId == p.Id)">@p.FullPath</option>
+                                                }
+                                            </select>
+                                            <select name="isActive" class="form-control" style="max-width:100px;">
+                                                <option value="true" selected="@cat.IsActive">Active</option>
+                                                <option value="false" selected="@(!cat.IsActive)">Inactive</option>
+                                            </select>
+                                            <button type="submit" class="btn-ghost btn-sm">Save</button>
+                                            <button formaction="@Url.Action("DeleteCategory")" formmethod="post" class="btn-ghost btn-sm" style="color:var(--danger);"
+                                                    onclick="return confirm('Delete?');">Delete</button>
+                                        </form>
+                                    </td>
+                                }
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

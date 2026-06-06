@@ -1,0 +1,50 @@
+@page
+@model VerifyEmailOtpModel
+@{
+    ViewData["Title"] = "Verify Email";
+    Layout = "/Views/Shared/_AuthLayout.cshtml";
+}
+
+<div class="auth-page">
+    <div class="auth-card">
+        <div class="auth-logo">
+            <h1>BlogHub</h1>
+            <p>Verify your email</p>
+        </div>
+
+        @if (!string.IsNullOrEmpty(Model.InfoMessage))
+        {
+            <div class="alert alert-info" style="font-size:0.85rem;">@Model.InfoMessage</div>
+        }
+
+        <form method="post" asp-page-handler="Verify" asp-route-returnUrl="@Model.ReturnUrl">
+            <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+            <div class="form-group">
+                <label asp-for="Input.Email" class="form-label">Email</label>
+                <input asp-for="Input.Email" class="form-control" readonly />
+            </div>
+
+            <div class="form-group">
+                <label asp-for="Input.Otp" class="form-label">6-Digit OTP</label>
+                <input asp-for="Input.Otp" class="form-control" inputmode="numeric" autocomplete="one-time-code" placeholder="123456" maxlength="6" />
+                <span asp-validation-for="Input.Otp" class="text-danger" style="font-size:0.8rem;"></span>
+            </div>
+
+            <button type="submit" class="btn-brand" style="width:100%;margin-bottom:0.75rem;">Verify Email</button>
+        </form>
+
+        <form method="post" asp-page-handler="Resend" asp-route-returnUrl="@Model.ReturnUrl">
+            <input type="hidden" asp-for="Input.Email" />
+            <button type="submit" class="btn btn-outline-secondary" style="width:100%;">Resend OTP</button>
+        </form>
+
+        <div class="auth-footer">
+            <p><a asp-page="./Login">Back to Sign in</a></p>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

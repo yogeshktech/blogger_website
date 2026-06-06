@@ -1,0 +1,25 @@
+@{
+    Layout = "_AdminLayout";
+    ViewData["Title"] = "Pending Approval";
+}
+
+<div class="pending-page">
+    <svg class="pending-icon" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+        <path d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+    </svg>
+    <h2 style="font-size:1.5rem;font-weight:800;margin-bottom:0.75rem;">Waiting for Approval</h2>
+    <p style="color:var(--text-muted);margin-bottom:1.5rem;">
+        Your admin account is registered but not yet approved by the SuperAdmin.
+        Once approved, you'll be able to create and manage blogs.
+    </p>
+    <div class="alert alert-info" style="text-align:left;">
+        You'll receive access after SuperAdmin reviews your registration. Please check back later or contact the site administrator.
+    </div>
+    <div style="margin-top:1.5rem;display:flex;gap:0.75rem;justify-content:center;flex-wrap:wrap;">
+        <a asp-controller="Blog" asp-action="Index" class="btn-outline-brand">Browse Blogs</a>
+        <form asp-area="Identity" asp-page="/Account/Logout" asp-route-returnUrl="@Url.Action("Index","Home")" method="post" style="display:inline;">
+            @Html.AntiForgeryToken()
+            <button type="submit" class="btn-ghost">Logout</button>
+        </form>
+    </div>
+</div>

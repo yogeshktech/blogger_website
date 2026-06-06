@@ -1,0 +1,72 @@
+@model Blogger_website.Models.ViewModels.VendorListViewModel
+
+<div class="admin-card">
+    <div class="admin-card-header">
+        <h2>Vendor Network (@Model.Vendors.Count)</h2>
+        <a asp-action="Requests" class="btn-ghost btn-sm">View Requests →</a>
+    </div>
+    <div class="admin-card-body">
+        <p style="font-size:0.875rem;color:var(--text-muted);margin:0 1.25rem 1rem;">
+            Connect with other approved vendors. Send a request — after they accept, you can chat.
+        </p>
+        @if (!Model.Vendors.Any())
+        {
+            <div class="empty-state" style="border:none;margin:1rem;"><p>No other vendors available yet.</p></div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead><tr><th>Vendor</th><th>Email</th><th>Status</th><th>Action</th></tr></thead>
+                    <tbody>
+                        @foreach (var v in Model.Vendors)
+                        {
+                            <tr>
+                                <td><strong>@v.FullName</strong></td>
+                                <td>@v.Email</td>
+                                <td>
+                                    @switch (v.ConnectionStatus)
+                                    {
+                                        case "Connected":
+                                            <span class="badge badge-success">Connected</span>; break;
+                                        case "PendingOutgoing":
+                                            <span class="badge badge-warning">Request Sent</span>; break;
+                                        case "PendingIncoming":
+                                            <span class="badge badge-primary">Wants to Connect</span>; break;
+                                        case "Rejected":
+                                            <span class="badge badge-danger">Rejected</span>; break;
+                                        default:
+                                            <span class="badge badge-success" style="background:#f1f5f9;color:var(--text-muted);">New</span>; break;
+                                    }
+                                </td>
+                                <td>
+                                    @if (v.ConnectionStatus == "Connected" && v.ThreadId.HasValue)
+                                    {
+                                        <a asp-action="Chat" asp-route-id="@v.ThreadId" class="btn-brand btn-sm">Open Chat</a>
+                                    }
+                                    else if (v.ConnectionStatus == "PendingIncoming" && v.RequestId.HasValue)
+                                    {
+                                        <a asp-action="Requests" class="btn-brand btn-sm">Review Request</a>
+                                    }
+                                    else if (v.ConnectionStatus == "None" || v.ConnectionStatus == "Rejected")
+                                    {
+                                        <form asp-action="SendRequest" method="post" style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">
+                                            @Html.AntiForgeryToken()
+                                            <input type="hidden" name="toUserId" value="@v.UserId" />
+                                            <input type="text" name="introMessage" class="form-control" style="max-width:200px;" placeholder="Optional message..." />
+                                            <button type="submit" class="btn-brand btn-sm">Send Request</button>
+                                        </form>
+                                    }
+                                    else if (v.ConnectionStatus == "PendingOutgoing")
+                                    {
+                                        <span style="font-size:0.85rem;color:var(--text-muted);">Waiting for response...</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

@@ -1,0 +1,50 @@
+@model (List<Blogger_website.Models.Entities.BlogCategory> Tree, int? SelectedCategoryId, string ControllerName, string ActionName, int? LabelId)
+
+<div class="category-tree">
+    <div class="category-pills" style="margin-bottom:1rem;">
+        <a asp-controller="@Model.ControllerName" asp-action="@Model.ActionName"
+           asp-route-labelId="@Model.LabelId"
+           class="category-pill @(Model.SelectedCategoryId == null ? "active" : "")">All</a>
+    </div>
+
+    @foreach (var cat in Model.Tree)
+    {
+        <div class="category-tree-group">
+            <a asp-controller="@Model.ControllerName" asp-action="@Model.ActionName"
+               asp-route-categoryId="@cat.Id" asp-route-labelId="@Model.LabelId"
+               class="category-pill category-pill-root @(Model.SelectedCategoryId == cat.Id ? "active" : "")">
+                @cat.Name
+            </a>
+
+            @if (cat.Children.Any())
+            {
+                <div class="category-tree-children">
+                    @foreach (var sub in cat.Children)
+                    {
+                        <div class="category-tree-sub">
+                            <a asp-controller="@Model.ControllerName" asp-action="@Model.ActionName"
+                               asp-route-categoryId="@sub.Id" asp-route-labelId="@Model.LabelId"
+                               class="category-pill category-pill-sub @(Model.SelectedCategoryId == sub.Id ? "active" : "")">
+                                @sub.Name
+                            </a>
+
+                            @if (sub.Children.Any())
+                            {
+                                <div class="category-tree-grandchildren">
+                                    @foreach (var child in sub.Children)
+                                    {
+                                        <a asp-controller="@Model.ControllerName" asp-action="@Model.ActionName"
+                                           asp-route-categoryId="@child.Id" asp-route-labelId="@Model.LabelId"
+                                           class="category-pill category-pill-child @(Model.SelectedCategoryId == child.Id ? "active" : "")">
+                                            @child.Name
+                                        </a>
+                                    }
+                                </div>
+                            }
+                        </div>
+                    }
+                </div>
+            }
+        </div>
+    }
+</div>

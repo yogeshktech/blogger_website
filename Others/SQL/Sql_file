@@ -1,0 +1,434 @@
+-- =============================================================================
+-- BlogHub - Complete PostgreSQL Database Schema
+-- =============================================================================
+--
+-- ⚠️  AGAR TABLES PEHLE SE HAIN (AspNetUsers, Blogs, BlogCategories, Comments...)
+--     TO POORA YE FILE MAT CHALAO!
+--     Sirf ye file run karo:  Upgrade_Existing_Database.sql
+--
+-- ✅  NAYI FRESH DATABASE ke liye ye poora file use karo
+-- =============================================================================
+
+-- =============================================================================
+-- SECTION 1: ASP.NET IDENTITY (Users, Roles, Login)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS "AspNetRoles"
+(
+    "Id"               TEXT NOT NULL,
+    "Name"             VARCHAR(256) NULL,
+    "NormalizedName"   VARCHAR(256) NULL,
+    "ConcurrencyStamp" TEXT NULL,
+    CONSTRAINT "PK_AspNetRoles" PRIMARY KEY ("Id")
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS "RoleNameIndex"
+    ON "AspNetRoles" ("NormalizedName");
+
+CREATE TABLE IF NOT EXISTS "AspNetUsers"
+(
+    "Id"                   TEXT NOT NULL,
+    "UserName"             VARCHAR(256) NULL,
+    "NormalizedUserName"   VARCHAR(256) NULL,
+    "Email"                VARCHAR(256) NULL,
+    "NormalizedEmail"      VARCHAR(256) NULL,
+    "EmailConfirmed"       BOOLEAN NOT NULL DEFAULT FALSE,
+    "PasswordHash"         TEXT NULL,
+    "SecurityStamp"        TEXT NULL,
+    "ConcurrencyStamp"     TEXT NULL,
+    "PhoneNumber"          TEXT NULL,
+    "PhoneNumberConfirmed" BOOLEAN NOT NULL DEFAULT FALSE,
+    "TwoFactorEnabled"     BOOLEAN NOT NULL DEFAULT FALSE,
+    "LockoutEnd"           TIMESTAMPTZ NULL,
+    "LockoutEnabled"       BOOLEAN NOT NULL DEFAULT FALSE,
+    "AccessFailedCount"    INT NOT NULL DEFAULT 0,
+    "FullName"             TEXT NULL,
+    "IsActive"             BOOLEAN NOT NULL DEFAULT TRUE,
+    CONSTRAINT "PK_AspNetUsers" PRIMARY KEY ("Id")
+);
+
+CREATE INDEX IF NOT EXISTS "EmailIndex"
+    ON "AspNetUsers" ("NormalizedEmail");
+
+CREATE UNIQUE INDEX IF NOT EXISTS "UserNameIndex"
+    ON "AspNetUsers" ("NormalizedUserName");
+
+CREATE TABLE IF NOT EXISTS "AspNetRoleClaims"
+(
+    "Id"         SERIAL PRIMARY KEY,
+    "RoleId"     TEXT NOT NULL,
+    "ClaimType"  TEXT NULL,
+    "ClaimValue" TEXT NULL,
+    CONSTRAINT "FK_AspNetRoleClaims_AspNetRoles_RoleId"
+        FOREIGN KEY ("RoleId") REFERENCES "AspNetRoles" ("Id") ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS "IX_AspNetRoleClaims_RoleId"
+    ON "AspNetRoleClaims" ("RoleId");
+
+CREATE TABLE IF NOT EXISTS "AspNetUserClaims"
+(
+    "Id"         SERIAL PRIMARY KEY,
+    "UserId"     TEXT NOT NULL,
+    "ClaimType"  TEXT NULL,
+    "ClaimValue" TEXT NULL,
+    CONSTRAINT "FK_AspNetUserClaims_AspNetUsers_UserId"
+        FOREIGN KEY ("UserId") REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS "IX_AspNetUserClaims_UserId"
+    ON "AspNetUserClaims" ("UserId");
+
+CREATE TABLE IF NOT EXISTS "AspNetUserLogins"
+(
+    "LoginProvider"       VARCHAR(128) NOT NULL,
+    "ProviderKey"         VARCHAR(128) NOT NULL,
+    "ProviderDisplayName" TEXT NULL,
+    "UserId"              TEXT NOT NULL,
+    CONSTRAINT "PK_AspNetUserLogins" PRIMARY KEY ("LoginProvider", "ProviderKey"),
+    CONSTRAINT "FK_AspNetUserLogins_AspNetUsers_UserId"
+        FOREIGN KEY ("UserId") REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS "IX_AspNetUserLogins_UserId"
+    ON "AspNetUserLogins" ("UserId");
+
+CREATE TABLE IF NOT EXISTS "AspNetUserRoles"
+(
+    "UserId" TEXT NOT NULL,
+    "RoleId" TEXT NOT NULL,
+    CONSTRAINT "PK_AspNetUserRoles" PRIMARY KEY ("UserId", "RoleId"),
+    CONSTRAINT "FK_AspNetUserRoles_AspNetUsers_UserId"
+        FOREIGN KEY ("UserId") REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_AspNetUserRoles_AspNetRoles_RoleId"
+        FOREIGN KEY ("RoleId") REFERENCES "AspNetRoles" ("Id") ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS "IX_AspNetUserRoles_RoleId"
+    ON "AspNetUserRoles" ("RoleId");
+
+CREATE TABLE IF NOT EXISTS "AspNetUserTokens"
+(
+    "UserId"        TEXT NOT NULL,
+    "LoginProvider" VARCHAR(128) NOT NULL,
+    "Name"          VARCHAR(128) NOT NULL,
+    "Value"         TEXT NULL,
+    CONSTRAINT "PK_AspNetUserTokens" PRIMARY KEY ("UserId", "LoginProvider", "Name"),
+    CONSTRAINT "FK_AspNetUserTokens_AspNetUsers_UserId"
+        FOREIGN KEY ("UserId") REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE
+);
+
+-- EF Core migrations history (optional — dotnet ef database update bhi use kar sakte ho)
+CREATE TABLE IF NOT EXISTS "__EFMigrationsHistory"
+(
+    "MigrationId"    VARCHAR(150) NOT NULL,
+    "ProductVersion" VARCHAR(32)  NOT NULL,
+    CONSTRAINT "PK___EFMigrationsHistory" PRIMARY KEY ("MigrationId")
+);
+
+
+-- =============================================================================
+-- SECTION 2: BLOG CATEGORIES (Category → Sub Category → Child Category)
+-- Unlimited depth via ParentId self-reference
+-- Example: Study > PHP > Interview Questions
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS "BlogCategories"
+(
+    "Id"        SERIAL PRIMARY KEY,
+    "Name"      VARCHAR(100) NOT NULL,
+    "Slug"      VARCHAR(120) NULL,
+    "ParentId"  INT NULL,
+    "SortOrder" INT NOT NULL DEFAULT 0,
+    "IsActive"  BOOLEAN NOT NULL DEFAULT TRUE,
+    "CreatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "FK_BlogCategories_Parent"
+        FOREIGN KEY ("ParentId")
+        REFERENCES "BlogCategories" ("Id") ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS "IX_BlogCategories_ParentId"
+    ON "BlogCategories" ("ParentId");
+
+CREATE INDEX IF NOT EXISTS "IX_BlogCategories_Slug"
+    ON "BlogCategories" ("Slug");
+
+
+-- =============================================================================
+-- SECTION 3: BLOG LABELS / TAGS (flexible — Jokes, Study, Comedy, News, etc.)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS "BlogLabels"
+(
+    "Id"        SERIAL PRIMARY KEY,
+    "Name"      VARCHAR(100) NOT NULL UNIQUE,
+    "Slug"      VARCHAR(120) NULL,
+    "IsActive"  BOOLEAN NOT NULL DEFAULT TRUE,
+    "CreatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS "IX_BlogLabels_Slug"
+    ON "BlogLabels" ("Slug");
+
+
+-- =============================================================================
+-- SECTION 4: BLOGS
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS "Blogs"
+(
+    "Id"               SERIAL PRIMARY KEY,
+    "Title"            VARCHAR(300) NOT NULL,
+    "Slug"             VARCHAR(350) NOT NULL UNIQUE,
+    "ShortDescription" VARCHAR(500) NULL,
+    "Content"          TEXT NOT NULL,
+    "FeaturedImage"    VARCHAR(500) NULL,
+    "CategoryId"       INT NULL,
+    "CreatedByUserId"  TEXT NOT NULL,
+    "IsPublished"      BOOLEAN NOT NULL DEFAULT FALSE,
+    "CreatedAt"        TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "UpdatedAt"        TIMESTAMP NULL,
+    CONSTRAINT "FK_Blogs_Category"
+        FOREIGN KEY ("CategoryId")
+        REFERENCES "BlogCategories" ("Id") ON DELETE SET NULL,
+    CONSTRAINT "FK_Blogs_User"
+        FOREIGN KEY ("CreatedByUserId")
+        REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS "IX_Blogs_CategoryId"
+    ON "Blogs" ("CategoryId");
+
+CREATE INDEX IF NOT EXISTS "IX_Blogs_CreatedByUserId"
+    ON "Blogs" ("CreatedByUserId");
+
+CREATE INDEX IF NOT EXISTS "IX_Blogs_IsPublished"
+    ON "Blogs" ("IsPublished");
+
+CREATE INDEX IF NOT EXISTS "IX_Blogs_Slug"
+    ON "Blogs" ("Slug");
+
+
+-- =============================================================================
+-- SECTION 5: BLOG ↔ LABEL MAPPING (many-to-many)
+-- Ek blog par multiple labels: Study + PHP + Interview
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS "BlogLabelMappings"
+(
+    "BlogId"  INT NOT NULL,
+    "LabelId" INT NOT NULL,
+    CONSTRAINT "PK_BlogLabelMappings" PRIMARY KEY ("BlogId", "LabelId"),
+    CONSTRAINT "FK_BlogLabelMappings_Blog"
+        FOREIGN KEY ("BlogId") REFERENCES "Blogs" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_BlogLabelMappings_Label"
+        FOREIGN KEY ("LabelId") REFERENCES "BlogLabels" ("Id") ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS "IX_BlogLabelMappings_LabelId"
+    ON "BlogLabelMappings" ("LabelId");
+
+
+-- =============================================================================
+-- SECTION 6: COMMENTS
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS "Comments"
+(
+    "Id"          SERIAL PRIMARY KEY,
+    "BlogId"      INT NOT NULL,
+    "ParentId"    INT NULL,
+    "UserId"      TEXT NULL,
+    "AuthorName"  VARCHAR(100) NOT NULL,
+    "AuthorEmail" VARCHAR(200) NULL,
+    "Content"     TEXT NOT NULL,
+    "IsApproved"  BOOLEAN NOT NULL DEFAULT TRUE,
+    "CreatedAt"   TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "FK_Comments_Blog"
+        FOREIGN KEY ("BlogId")
+        REFERENCES "Blogs" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_Comments_User"
+        FOREIGN KEY ("UserId")
+        REFERENCES "AspNetUsers" ("Id") ON DELETE SET NULL,
+    CONSTRAINT "FK_Comments_Parent"
+        FOREIGN KEY ("ParentId")
+        REFERENCES "Comments" ("Id") ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS "IX_Comments_BlogId"
+    ON "Comments" ("BlogId");
+
+CREATE INDEX IF NOT EXISTS "IX_Comments_UserId"
+    ON "Comments" ("UserId");
+
+CREATE INDEX IF NOT EXISTS "IX_Comments_ParentId"
+    ON "Comments" ("ParentId");
+
+
+-- =============================================================================
+-- SECTION 6A: BLOG LIKES
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS "BlogLikes"
+(
+    "Id"         SERIAL PRIMARY KEY,
+    "BlogId"     INT NOT NULL,
+    "LikedByKey" VARCHAR(100) NOT NULL,
+    "CreatedAt"  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "FK_BlogLikes_Blog"
+        FOREIGN KEY ("BlogId") REFERENCES "Blogs" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "UQ_BlogLikes_Blog_LikedByKey" UNIQUE ("BlogId", "LikedByKey")
+);
+
+CREATE INDEX IF NOT EXISTS "IX_BlogLikes_BlogId"
+    ON "BlogLikes" ("BlogId");
+
+
+-- =============================================================================
+-- SECTION 6B: VENDOR NETWORK (connection requests + chat)
+-- =============================================================================
+
+CREATE TABLE IF NOT EXISTS "VendorConnectionRequests"
+(
+    "Id"           SERIAL PRIMARY KEY,
+    "FromUserId"   TEXT NOT NULL,
+    "ToUserId"     TEXT NOT NULL,
+    "Status"       VARCHAR(20) NOT NULL DEFAULT 'Pending',
+    "IntroMessage" TEXT NULL,
+    "CreatedAt"    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "RespondedAt"  TIMESTAMP NULL,
+    CONSTRAINT "FK_VendorConnectionRequests_FromUser"
+        FOREIGN KEY ("FromUserId") REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_VendorConnectionRequests_ToUser"
+        FOREIGN KEY ("ToUserId") REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "CHK_VendorConnectionRequests_Status"
+        CHECK ("Status" IN ('Pending', 'Accepted', 'Rejected'))
+);
+
+CREATE INDEX IF NOT EXISTS "IX_VendorConnectionRequests_FromUserId"
+    ON "VendorConnectionRequests" ("FromUserId");
+CREATE INDEX IF NOT EXISTS "IX_VendorConnectionRequests_ToUserId"
+    ON "VendorConnectionRequests" ("ToUserId");
+CREATE INDEX IF NOT EXISTS "IX_VendorConnectionRequests_Status"
+    ON "VendorConnectionRequests" ("Status");
+
+CREATE TABLE IF NOT EXISTS "VendorChatThreads"
+(
+    "Id"                  SERIAL PRIMARY KEY,
+    "ConnectionRequestId" INT NOT NULL,
+    "User1Id"             TEXT NOT NULL,
+    "User2Id"             TEXT NOT NULL,
+    "CreatedAt"           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "FK_VendorChatThreads_ConnectionRequest"
+        FOREIGN KEY ("ConnectionRequestId") REFERENCES "VendorConnectionRequests" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_VendorChatThreads_User1"
+        FOREIGN KEY ("User1Id") REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_VendorChatThreads_User2"
+        FOREIGN KEY ("User2Id") REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "UQ_VendorChatThreads_Pair" UNIQUE ("User1Id", "User2Id")
+);
+
+CREATE TABLE IF NOT EXISTS "VendorChatMessages"
+(
+    "Id"           SERIAL PRIMARY KEY,
+    "ThreadId"     INT NOT NULL,
+    "SenderUserId" TEXT NOT NULL,
+    "Content"      TEXT NOT NULL,
+    "CreatedAt"    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "FK_VendorChatMessages_Thread"
+        FOREIGN KEY ("ThreadId") REFERENCES "VendorChatThreads" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_VendorChatMessages_Sender"
+        FOREIGN KEY ("SenderUserId") REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS "IX_VendorChatMessages_ThreadId"
+    ON "VendorChatMessages" ("ThreadId");
+
+
+-- =============================================================================
+-- SECTION 7: UPGRADE COLUMNS (purani DB ho to ye safe run ho jayega)
+-- =============================================================================
+
+ALTER TABLE "AspNetUsers" ADD COLUMN IF NOT EXISTS "FullName" TEXT NULL;
+ALTER TABLE "AspNetUsers" ADD COLUMN IF NOT EXISTS "IsActive" BOOLEAN NOT NULL DEFAULT TRUE;
+
+ALTER TABLE "BlogCategories" ADD COLUMN IF NOT EXISTS "ParentId" INT NULL;
+ALTER TABLE "BlogCategories" ADD COLUMN IF NOT EXISTS "Slug" VARCHAR(120) NULL;
+ALTER TABLE "BlogCategories" ADD COLUMN IF NOT EXISTS "SortOrder" INT NOT NULL DEFAULT 0;
+
+
+-- =============================================================================
+-- SECTION 8: DEFAULT ROLES (SuperAdmin, Blogger)
+-- App startup par bhi seed hota hai — yahan manual run ke liye
+-- =============================================================================
+
+INSERT INTO "AspNetRoles" ("Id", "Name", "NormalizedName", "ConcurrencyStamp")
+SELECT gen_random_uuid()::text, 'SuperAdmin', 'SUPERADMIN', gen_random_uuid()::text
+WHERE NOT EXISTS (SELECT 1 FROM "AspNetRoles" WHERE "NormalizedName" = 'SUPERADMIN');
+
+INSERT INTO "AspNetRoles" ("Id", "Name", "NormalizedName", "ConcurrencyStamp")
+SELECT gen_random_uuid()::text, 'Blogger', 'BLOGGER', gen_random_uuid()::text
+WHERE NOT EXISTS (SELECT 1 FROM "AspNetRoles" WHERE "NormalizedName" = 'BLOGGER');
+
+
+-- =============================================================================
+-- SECTION 9: SAMPLE DATA (optional — comment hata kar run karo)
+-- =============================================================================
+
+/*
+-- Labels
+INSERT INTO "BlogLabels" ("Name", "Slug") VALUES
+    ('Study',       'study'),
+    ('Interview',   'interview'),
+    ('PHP',         'php'),
+    ('Laravel',     'laravel'),
+    ('React',       'react'),
+    ('Node.js',     'node-js'),
+    ('Jokes',       'jokes'),
+    ('Comedy',      'comedy'),
+    ('News',        'news')
+ON CONFLICT ("Name") DO NOTHING;
+
+-- Categories (Study tree)
+INSERT INTO "BlogCategories" ("Name", "Slug", "ParentId", "SortOrder") VALUES
+    ('Study',  'study',  NULL, 1),
+    ('Comedy', 'comedy', NULL, 2),
+    ('News',   'news',   NULL, 3);
+
+INSERT INTO "BlogCategories" ("Name", "Slug", "ParentId", "SortOrder")
+SELECT 'PHP', 'php', c."Id", 1 FROM "BlogCategories" c WHERE c."Name" = 'Study' AND c."ParentId" IS NULL;
+
+INSERT INTO "BlogCategories" ("Name", "Slug", "ParentId", "SortOrder")
+SELECT 'Laravel', 'laravel', c."Id", 2 FROM "BlogCategories" c WHERE c."Name" = 'Study' AND c."ParentId" IS NULL;
+
+INSERT INTO "BlogCategories" ("Name", "Slug", "ParentId", "SortOrder")
+SELECT 'React', 'react', c."Id", 3 FROM "BlogCategories" c WHERE c."Name" = 'Study' AND c."ParentId" IS NULL;
+
+INSERT INTO "BlogCategories" ("Name", "Slug", "ParentId", "SortOrder")
+SELECT 'Node.js', 'node-js', c."Id", 4 FROM "BlogCategories" c WHERE c."Name" = 'Study' AND c."ParentId" IS NULL;
+
+INSERT INTO "BlogCategories" ("Name", "Slug", "ParentId", "SortOrder")
+SELECT 'Interview Questions', 'php-interview-questions', c."Id", 1
+FROM "BlogCategories" c WHERE c."Name" = 'PHP';
+
+INSERT INTO "BlogCategories" ("Name", "Slug", "ParentId", "SortOrder")
+SELECT 'Jokes', 'jokes', c."Id", 1
+FROM "BlogCategories" c WHERE c."Name" = 'Comedy' AND c."ParentId" IS NULL;
+*/
+
+
+-- =============================================================================
+-- TABLE SUMMARY
+-- =============================================================================
+-- AspNetRoles          → SuperAdmin, Blogger roles
+-- AspNetUsers          → Admin/Blogger users (FullName, IsActive)
+-- AspNetUserRoles      → User ↔ Role mapping
+-- BlogCategories       → Category / Sub / Child (ParentId tree)
+-- BlogLabels           → Tags: Jokes, Study, Comedy, News, etc.
+-- Blogs                → Blog posts
+-- BlogLabelMappings    → Blog ↔ multiple Labels
+-- Comments             → User comments on blogs
+-- VendorConnectionRequests → Vendor connect requests
+-- VendorChatThreads    → Accepted vendor chat rooms
+-- VendorChatMessages   → Vendor chat messages
+-- =============================================================================

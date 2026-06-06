@@ -1,0 +1,61 @@
+@model Blogger_website.Models.ViewModels.LabelsAdminViewModel
+
+<div class="admin-card" style="margin-bottom:1.5rem;max-width:600px;">
+    <div class="admin-card-header"><h2>Add Label / Tag</h2></div>
+    <div style="padding:1.25rem;">
+        <form asp-action="AddLabel" method="post" style="display:flex;gap:0.75rem;flex-wrap:wrap;">
+            @Html.AntiForgeryToken()
+            <input type="text" name="name" class="form-control" required placeholder="Jokes, Study, Comedy, News, Laravel, React..." style="flex:1;min-width:200px;" />
+            <button type="submit" class="btn-brand btn-sm">Add Label</button>
+        </form>
+        <p style="font-size:0.8rem;color:var(--text-muted);margin:0.75rem 0 0;">Labels are flexible tags — admins pick multiple when posting blogs.</p>
+    </div>
+</div>
+
+<div class="admin-card">
+    <div class="admin-card-header"><h2>All Labels (@Model.Labels.Count)</h2></div>
+    <div class="admin-card-body">
+        @if (!Model.Labels.Any())
+        {
+            <div class="empty-state" style="border:none;margin:1rem;"><p>No labels yet.</p></div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead><tr><th>Name</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody>
+                        @foreach (var label in Model.Labels)
+                        {
+                            <tr>
+                                <td>
+                                    <form asp-action="UpdateLabel" method="post" style="display:flex;gap:0.5rem;align-items:center;">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@label.Id" />
+                                        <input type="text" name="name" value="@label.Name" class="form-control" style="max-width:220px;" />
+                                        <select name="isActive" class="form-control" style="max-width:100px;">
+                                            <option value="true" selected="@label.IsActive">Active</option>
+                                            <option value="false" selected="@(!label.IsActive)">Inactive</option>
+                                        </select>
+                                        <button type="submit" class="btn-ghost btn-sm">Save</button>
+                                    </form>
+                                </td>
+                                <td>
+                                    @if (label.IsActive) { <span class="badge badge-success">Active</span> }
+                                    else { <span class="badge badge-warning">Inactive</span> }
+                                </td>
+                                <td>
+                                    <form asp-action="DeleteLabel" method="post" onsubmit="return confirm('Delete label?');">
+                                        @Html.AntiForgeryToken()
+                                        <input type="hidden" name="id" value="@label.Id" />
+                                        <button type="submit" class="btn-ghost btn-sm" style="color:var(--danger);">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

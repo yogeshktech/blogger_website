@@ -1,0 +1,16 @@
+@model Blogger_website.Models.ViewModels.BlogFormViewModel
+@{
+    ViewData["Title"] = "Edit Blog";
+}
+
+<div class="admin-card" style="max-width:800px;">
+    <div class="admin-card-header">
+        <h2>Edit Blog</h2>
+    </div>
+    <div style="padding:1.5rem;">
+        <form asp-action="Edit" asp-route-id="@Model.Id" method="post" enctype="multipart/form-data">
+            @Html.AntiForgeryToken()
+            @await Html.PartialAsync("_BlogForm", Model)
+        </form>
+    </div>
+</div>
