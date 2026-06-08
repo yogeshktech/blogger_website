@@ -147,7 +147,14 @@ public partial class BusinessLayer
             {
                 Success = true,
                 Message = "Message sent",
-                Data = new { Id = messageId, Content = content, CreatedAt = DateTime.UtcNow }
+                Data = new
+                {
+                    Id = messageId,
+                    Content = content,
+                    CreatedAt = DateTime.UtcNow,
+                    SenderName = user.Identity?.Name,
+                    IsMine = true
+                }
             });
         }
         catch (Exception ex)

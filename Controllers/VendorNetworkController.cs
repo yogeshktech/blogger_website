@@ -144,7 +144,7 @@ public class VendorNetworkController : Controller
         var otherUser = await _userManager.FindByIdAsync(otherUserId);
         var messages = await _databaseLayer.GetChatMessagesAsync(id);
         foreach (var msg in messages)
-            msg.IsMine = msg.SenderUserId == userId;
+            msg.IsMine = string.Equals(msg.SenderUserId, userId, StringComparison.Ordinal);
 
         ViewData["Title"] = "Chat";
         return View(new VendorChatViewModel
@@ -163,6 +163,11 @@ public class VendorNetworkController : Controller
         if (pending != null) return pending;
 
         var result = await _businessLayer.SendVendorChatMessage(threadId, content, User);
+        if (result is OkObjectResult ok && Request.Headers["X-Requested-With"] == "XMLHttpRequest")
+        {
+            return Json(ok.Value);
+        }
+
         if (result is not OkObjectResult)
             TempData["Error"] = "Message could not be sent.";
 
@@ -178,8 +183,19 @@ public class VendorNetworkController : Controller
 
         var messages = await _databaseLayer.GetChatMessagesAsync(threadId, afterId);
         foreach (var msg in messages)
-            msg.IsMine = msg.SenderUserId == userId;
+            msg.IsMine = string.Equals(msg.SenderUserId, userId, StringComparison.Ordinal);
 
-        return Json(new { success = true, data = messages });
+        return Json(new
+        {
+            success = true,
+            data = messages.Select(m => new
+            {
+                id = m.Id,
+                content = m.Content,
+                createdAt = m.CreatedAt,
+                senderName = m.SenderName,
+                isMine = m.IsMine
+            })
+        });
     }
 }

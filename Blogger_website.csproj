@@ -26,6 +26,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Remove="Others\SQL\DbUpgradeRunner\**" />
+    <Content Remove="Others\SQL\DbUpgradeRunner\**" />
+    <None Remove="Others\SQL\DbUpgradeRunner\**" />
+    <EmbeddedResource Remove="Others\SQL\DbUpgradeRunner\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Content Update="appsettings.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
