@@ -11,6 +11,9 @@ public partial interface IBusinessLayer
     Task<IActionResult> AcceptVendorConnectionRequest(int requestId, ClaimsPrincipal user);
     Task<IActionResult> RejectVendorConnectionRequest(int requestId, ClaimsPrincipal user);
     Task<IActionResult> SendVendorChatMessage(int threadId, string content, ClaimsPrincipal user);
+    Task<IActionResult> EditVendorChatMessage(int messageId, string content, ClaimsPrincipal user);
+    Task<IActionResult> HideVendorChatMessage(int messageId, ClaimsPrincipal user);
+    Task<IActionResult> DeleteVendorChatMessageForEveryone(int messageId, ClaimsPrincipal user);
 }
 
 public partial class BusinessLayer
@@ -143,6 +146,9 @@ public partial class BusinessLayer
                 return new ForbidResult();
 
             var messageId = await _databaseLayer.CreateChatMessageAsync(threadId, userId, content);
+            var appUser = await _userManager.FindByIdAsync(userId);
+            var senderName = appUser?.FullName ?? appUser?.Email ?? appUser?.UserName ?? "You";
+
             return new OkObjectResult(new
             {
                 Success = true,
@@ -152,10 +158,117 @@ public partial class BusinessLayer
                     Id = messageId,
                     Content = content,
                     CreatedAt = DateTime.UtcNow,
-                    SenderName = user.Identity?.Name,
-                    IsMine = true
+                    SenderName = senderName,
+                    IsMine = true,
+                    DeletedForEveryone = false,
+                    EditedAt = (DateTime?)null
                 }
             });
+        }
+        catch (Exception ex)
+        {
+            return new ObjectResult(new { Success = false, Message = ex.Message }) { StatusCode = 500 };
+        }
+    }
+
+    public async Task<IActionResult> EditVendorChatMessage(int messageId, string content, ClaimsPrincipal user)
+    {
+        var gate = await EnsureApprovedVendorAsync(user);
+        if (gate != null) return gate;
+
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return new ForbidResult();
+
+        content = content.Trim();
+        if (string.IsNullOrWhiteSpace(content))
+            return new BadRequestObjectResult(new { Success = false, Message = "Message cannot be empty" });
+
+        try
+        {
+            var message = await _databaseLayer.GetChatMessageByIdAsync(messageId);
+            if (message == null)
+                return new NotFoundObjectResult(new { Success = false, Message = "Message not found" });
+
+            if (!await _databaseLayer.IsUserInThreadAsync(message.ThreadId, userId))
+                return new ForbidResult();
+
+            if (message.SenderUserId != userId)
+                return new ForbidResult();
+
+            if (message.DeletedForEveryone)
+                return new BadRequestObjectResult(new { Success = false, Message = "Message was deleted" });
+
+            await _databaseLayer.UpdateChatMessageContentAsync(messageId, content);
+
+            return new OkObjectResult(new
+            {
+                Success = true,
+                Message = "Message updated",
+                Data = new
+                {
+                    Id = messageId,
+                    Content = content,
+                    EditedAt = DateTime.UtcNow
+                }
+            });
+        }
+        catch (Exception ex)
+        {
+            return new ObjectResult(new { Success = false, Message = ex.Message }) { StatusCode = 500 };
+        }
+    }
+
+    public async Task<IActionResult> HideVendorChatMessage(int messageId, ClaimsPrincipal user)
+    {
+        var gate = await EnsureApprovedVendorAsync(user);
+        if (gate != null) return gate;
+
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return new ForbidResult();
+
+        try
+        {
+            var message = await _databaseLayer.GetChatMessageByIdAsync(messageId);
+            if (message == null)
+                return new NotFoundObjectResult(new { Success = false, Message = "Message not found" });
+
+            if (!await _databaseLayer.IsUserInThreadAsync(message.ThreadId, userId))
+                return new ForbidResult();
+
+            await _databaseLayer.HideChatMessageForUserAsync(messageId, userId);
+            return new OkObjectResult(new { Success = true, Message = "Message hidden for you" });
+        }
+        catch (Exception ex)
+        {
+            return new ObjectResult(new { Success = false, Message = ex.Message }) { StatusCode = 500 };
+        }
+    }
+
+    public async Task<IActionResult> DeleteVendorChatMessageForEveryone(int messageId, ClaimsPrincipal user)
+    {
+        var gate = await EnsureApprovedVendorAsync(user);
+        if (gate != null) return gate;
+
+        var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (string.IsNullOrEmpty(userId))
+            return new ForbidResult();
+
+        try
+        {
+            var message = await _databaseLayer.GetChatMessageByIdAsync(messageId);
+            if (message == null)
+                return new NotFoundObjectResult(new { Success = false, Message = "Message not found" });
+
+            if (!await _databaseLayer.IsUserInThreadAsync(message.ThreadId, userId))
+                return new ForbidResult();
+
+            if (message.SenderUserId != userId)
+                return new ForbidResult();
+
+            await _databaseLayer.DeleteChatMessageForEveryoneAsync(messageId);
+            return new OkObjectResult(new { Success = true, Message = "Message deleted for everyone" });
         }
         catch (Exception ex)
         {

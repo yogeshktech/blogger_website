@@ -4,6 +4,7 @@ using Blogger_website.Models.BusinessLayer;
 using Blogger_website.Models.DatabaseLayer;
 using Blogger_website.Services;
 using CareerCracker.S3Services;
+using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.UI.Services;
 using Microsoft.EntityFrameworkCore;
@@ -35,6 +36,10 @@ builder.Services.AddScoped<IEmailNotificationService, EmailNotificationService>(
 builder.Services.AddScoped<IAdminRegistrationService, AdminRegistrationService>();
 
 builder.Services.AddControllersWithViews();
+builder.Services.Configure<ForwardedHeadersOptions>(options =>
+{
+    options.ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto | ForwardedHeaders.XForwardedHost;
+});
 builder.Services.AddScoped<IDatabaseLayer, DatabaseLayer>();
 builder.Services.AddScoped<IBusinessLayer, BusinessLayer>();
 
@@ -48,6 +53,8 @@ app.Logger.LogInformation("SMTP loaded: User={User}, AppPasswordLength={Length} 
 
 await RoleSeeder.SeedAsync(app.Services);
 await DatabaseInitializer.InitializeAsync(app.Configuration);
+
+app.UseForwardedHeaders();
 
 if (!app.Environment.IsDevelopment())
 {

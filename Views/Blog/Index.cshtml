@@ -26,16 +26,9 @@
 
 
     @if (Model.CategoryTree.Any())
-
     {
-
-        <div style="margin-bottom:0.75rem;font-size:0.8rem;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.05em;">Categories</div>
-
-        @await Html.PartialAsync("_CategoryTreeNav", (Model.CategoryTree, Model.SelectedCategoryId, "Blog", "Index", Model.SelectedLabelId))
-
+        @await Html.PartialAsync("_CategoryCards", Model.CategoryBrowse)
     }
-
-
 
     @if (Model.Labels.Any())
 
@@ -63,7 +56,14 @@
 
 
 
-    @if (!Model.Blogs.Any())
+    @if (!Model.CategoryBrowse.ShowBlogs && Model.CategoryTree.Any())
+    {
+        <div class="empty-state" style="margin-top:1.5rem;">
+            <h3>Pick a subcategory</h3>
+            <p>Select a topic above to see blogs in that category.</p>
+        </div>
+    }
+    else if (!Model.Blogs.Any())
 
     {
 

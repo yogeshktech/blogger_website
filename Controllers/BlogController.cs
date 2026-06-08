@@ -1,9 +1,11 @@
+using Blogger_website.Areas.Identity.Data;
 using Blogger_website.Models.BusinessLayer;
 using Blogger_website.Models.Constants;
 using Blogger_website.Models.DatabaseLayer;
 using Blogger_website.Models.Helpers;
 using Blogger_website.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Blogger_website.Controllers;
@@ -12,11 +14,13 @@ public class BlogController : Controller
 {
     private readonly IBusinessLayer _businessLayer;
     private readonly IDatabaseLayer _databaseLayer;
+    private readonly UserManager<ApplicationUser> _userManager;
 
-    public BlogController(IBusinessLayer businessLayer, IDatabaseLayer databaseLayer)
+    public BlogController(IBusinessLayer businessLayer, IDatabaseLayer databaseLayer, UserManager<ApplicationUser> userManager)
     {
         _businessLayer = businessLayer;
         _databaseLayer = databaseLayer;
+        _userManager = userManager;
     }
 
     public async Task<IActionResult> Index(int? categoryId, int? labelId)
@@ -24,14 +28,18 @@ public class BlogController : Controller
         var blogs = await _databaseLayer.GetPublishedBlogsAsync(categoryId, labelId);
         await _databaseLayer.AttachBlogLikesAsync(blogs, BlogEngagementHelper.GetLikeKey(HttpContext));
 
+        var tree = await _databaseLayer.GetCategoriesAsync();
+        var flat = await _databaseLayer.GetCategoriesFlatAsync();
+
         var model = new BlogListViewModel
         {
             Blogs = blogs,
-            CategoryTree = await _databaseLayer.GetCategoriesAsync(),
-            CategoriesFlat = await _databaseLayer.GetCategoriesFlatAsync(),
+            CategoryTree = tree,
+            CategoriesFlat = flat,
             Labels = await _databaseLayer.GetLabelsAsync(),
             SelectedCategoryId = categoryId,
-            SelectedLabelId = labelId
+            SelectedLabelId = labelId,
+            CategoryBrowse = CategoryBrowseHelper.Build(tree, flat, categoryId, "Blog", "Index", labelId)
         };
         ViewData["Title"] = "Blogs";
         return View(model);
@@ -47,13 +55,21 @@ public class BlogController : Controller
         var flatComments = await _databaseLayer.GetCommentsByBlogIdAsync(blog.Id);
         var canModerate = await _businessLayer.CanModerateBlogComments(blog.Id, User);
 
+        string? displayName = null;
+        if (User.Identity?.IsAuthenticated == true)
+        {
+            var user = await _userManager.GetUserAsync(User);
+            displayName = user?.FullName ?? user?.Email ?? user?.UserName;
+        }
+
         var model = new BlogDetailViewModel
         {
             Blog = blog,
             Comments = flatComments,
             CommentThreads = CommentHelper.BuildThread(flatComments),
             TotalCommentCount = CommentHelper.CountAll(flatComments),
-            CanModerateComments = canModerate
+            CanModerateComments = canModerate,
+            CurrentUserDisplayName = displayName
         };
         ViewData["Title"] = blog.Title;
         return View(model);

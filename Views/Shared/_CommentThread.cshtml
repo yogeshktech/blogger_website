@@ -1,17 +1,19 @@
-@model (Blogger_website.Models.Entities.Comment Comment, Blogger_website.Models.Entities.Blog Blog, bool CanModerate, int Depth)
+@model (Blogger_website.Models.Entities.Comment Comment, Blogger_website.Models.Entities.Blog Blog, bool CanModerate, int Depth, string? CurrentUserName)
 
 @{
     var comment = Model.Comment;
     var blog = Model.Blog;
-    var avatar = comment.AuthorName.Length > 0 ? comment.AuthorName[..1].ToUpper() : "?";
+    var displayName = string.IsNullOrWhiteSpace(comment.AuthorName) ? "Guest" : comment.AuthorName;
+    var avatar = displayName.Length > 0 ? displayName[..1].ToUpper() : "?";
     var margin = Model.Depth * 1.75;
+    var isLoggedIn = User.Identity?.IsAuthenticated == true;
 }
 
 <div class="comment-item @(Model.Depth > 0 ? "comment-reply" : "")" style="@(Model.Depth > 0 ? $"margin-left:{margin}rem;" : "")">
-    <div class="comment-avatar">@avatar</div>
+    <div class="comment-avatar" title="@displayName">@avatar</div>
     <div class="comment-body">
         <div class="comment-head">
-            <strong>@comment.AuthorName</strong>
+            <strong class="comment-author">@displayName</strong>
             @if (Model.Depth > 0)
             {
                 <span class="comment-reply-badge">Reply</span>
@@ -27,7 +29,9 @@
                     @Html.AntiForgeryToken()
                     <input type="hidden" name="id" value="@comment.Id" />
                     <input type="hidden" name="slug" value="@blog.Slug" />
-                    <button type="submit" class="btn-ghost btn-sm" style="color:var(--danger);">Delete</button>
+                    <button type="submit" class="icon-btn icon-btn-danger" title="Delete comment">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+                    </button>
                 </form>
             }
         </div>
@@ -39,6 +43,25 @@
                 <input type="hidden" name="blogId" value="@blog.Id" />
                 <input type="hidden" name="slug" value="@blog.Slug" />
                 <input type="hidden" name="parentId" value="@comment.Id" />
+
+                @if (!isLoggedIn)
+                {
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label class="form-label">Your Name</label>
+                            <input type="text" name="authorName" class="form-control" required placeholder="Your name" />
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Email (optional)</label>
+                            <input type="email" name="authorEmail" class="form-control" placeholder="you@email.com" />
+                        </div>
+                    </div>
+                }
+                else if (!string.IsNullOrEmpty(Model.CurrentUserName))
+                {
+                    <p class="comment-posting-as">Replying as <strong>@Model.CurrentUserName</strong></p>
+                }
+
                 <div class="form-group">
                     <textarea name="content" class="form-control" rows="3" required placeholder="Write a reply..."></textarea>
                 </div>
@@ -48,7 +71,7 @@
 
         @foreach (var reply in comment.Replies)
         {
-            @await Html.PartialAsync("_CommentThread", (reply, blog, Model.CanModerate, Model.Depth + 1))
+            @await Html.PartialAsync("_CommentThread", (reply, blog, Model.CanModerate, Model.Depth + 1, Model.CurrentUserName))
         }
     </div>
 </div>

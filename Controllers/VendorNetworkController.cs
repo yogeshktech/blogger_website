@@ -2,6 +2,7 @@ using Blogger_website.Areas.Identity.Data;
 using Blogger_website.Models.BusinessLayer;
 using Blogger_website.Models.Constants;
 using Blogger_website.Models.DatabaseLayer;
+using Blogger_website.Models.Entities;
 using Blogger_website.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -142,7 +143,8 @@ public class VendorNetworkController : Controller
 
         var otherUserId = thread.User1Id == userId ? thread.User2Id : thread.User1Id;
         var otherUser = await _userManager.FindByIdAsync(otherUserId);
-        var messages = await _databaseLayer.GetChatMessagesAsync(id);
+        var currentUser = await _userManager.GetUserAsync(User);
+        var messages = await _databaseLayer.GetChatMessagesAsync(id, null, userId);
         foreach (var msg in messages)
             msg.IsMine = string.Equals(msg.SenderUserId, userId, StringComparison.Ordinal);
 
@@ -151,7 +153,8 @@ public class VendorNetworkController : Controller
         {
             Thread = thread,
             Messages = messages,
-            OtherUserName = otherUser?.FullName ?? otherUser?.Email ?? "Vendor"
+            OtherUserName = otherUser?.FullName ?? otherUser?.Email ?? "Vendor",
+            CurrentUserName = currentUser?.FullName ?? currentUser?.Email ?? currentUser?.UserName ?? "You"
         });
     }
 
@@ -181,7 +184,7 @@ public class VendorNetworkController : Controller
         if (string.IsNullOrEmpty(userId) || !await _databaseLayer.IsUserInThreadAsync(threadId, userId))
             return Forbid();
 
-        var messages = await _databaseLayer.GetChatMessagesAsync(threadId, afterId);
+        var messages = await _databaseLayer.GetChatMessagesAsync(threadId, afterId, userId);
         foreach (var msg in messages)
             msg.IsMine = string.Equals(msg.SenderUserId, userId, StringComparison.Ordinal);
 
@@ -191,11 +194,64 @@ public class VendorNetworkController : Controller
             data = messages.Select(m => new
             {
                 id = m.Id,
-                content = m.Content,
+                content = m.DeletedForEveryone ? string.Empty : m.Content,
                 createdAt = m.CreatedAt,
+                editedAt = m.EditedAt,
                 senderName = m.SenderName,
-                isMine = m.IsMine
+                isMine = m.IsMine,
+                deletedForEveryone = m.DeletedForEveryone
             })
         });
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> EditMessage(int messageId, string content)
+    {
+        var pending = await EnsureApprovedAsync();
+        if (pending != null) return pending;
+
+        var result = await _businessLayer.EditVendorChatMessage(messageId, content, User);
+        return result is OkObjectResult ok ? Json(ok.Value) : BadRequest(result);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> HideMessage(int messageId)
+    {
+        var pending = await EnsureApprovedAsync();
+        if (pending != null) return pending;
+
+        var result = await _businessLayer.HideVendorChatMessage(messageId, User);
+        return result is OkObjectResult ok ? Json(ok.Value) : BadRequest(result);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> DeleteMessageForEveryone(int messageId)
+    {
+        var pending = await EnsureApprovedAsync();
+        if (pending != null) return pending;
+
+        var result = await _businessLayer.DeleteVendorChatMessageForEveryone(messageId, User);
+        return result is OkObjectResult ok ? Json(ok.Value) : BadRequest(result);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetNotifications()
+    {
+        var userId = _userManager.GetUserId(User);
+        if (string.IsNullOrEmpty(userId)) return Forbid();
+
+        var incoming = await _databaseLayer.GetIncomingConnectionRequestsAsync(userId);
+        var pendingIncoming = incoming.Count(r => r.Status == VendorConnectionStatus.Pending);
+
+        var outgoing = await _databaseLayer.GetOutgoingConnectionRequestsAsync(userId);
+        var acceptedOutgoing = outgoing
+            .Where(r => r.Status == VendorConnectionStatus.Accepted)
+            .Select(r => new { id = r.Id, toUserName = r.ToUserName, respondedAt = r.RespondedAt })
+            .ToList();
+
+        return Json(new { success = true, pendingIncoming, acceptedOutgoing });
     }
 }

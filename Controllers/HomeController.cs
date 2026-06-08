@@ -21,13 +21,16 @@ public class HomeController : Controller
         await _databaseLayer.AttachBlogLikesAsync(blogs, BlogEngagementHelper.GetLikeKey(HttpContext));
 
         var flat = await _databaseLayer.GetCategoriesFlatAsync();
+        var tree = await _databaseLayer.GetCategoriesAsync();
 
         var model = new HomeViewModel
         {
-            CategoryTree = await _databaseLayer.GetCategoriesAsync(),
+            CategoryTree = tree,
+            CategoriesFlat = flat,
             Labels = await _databaseLayer.GetLabelsAsync(),
             SelectedCategoryId = categoryId,
-            Blogs = blogs
+            Blogs = blogs,
+            CategoryBrowse = CategoryBrowseHelper.Build(tree, flat, categoryId, "Home", "Index")
         };
 
         if (categoryId.HasValue)

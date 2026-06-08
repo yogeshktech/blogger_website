@@ -1,0 +1,39 @@
+@model Blogger_website.Models.Entities.VendorChatMessage
+
+@{
+    var displayName = string.IsNullOrWhiteSpace(Model.SenderName) ? "Vendor" : Model.SenderName;
+    var deleted = Model.DeletedForEveryone;
+}
+
+<div class="vendor-chat-row @(Model.IsMine ? "mine" : "theirs")" data-row-id="@Model.Id">
+    <div class="vendor-chat-bubble" data-id="@Model.Id" data-mine="@(Model.IsMine ? "true" : "false")">
+        <div class="vendor-chat-meta">
+            <strong class="chat-sender-name">@displayName</strong>
+            <span>· @Model.CreatedAt.ToString("dd MMM HH:mm")</span>
+            @if (Model.EditedAt.HasValue && !deleted)
+            {
+                <span class="chat-edited-tag">edited</span>
+            }
+        </div>
+        <div class="vendor-chat-text @(deleted ? "chat-deleted-text" : "")">
+            @(deleted ? "This message was deleted" : Model.Content)
+        </div>
+        @if (!deleted)
+        {
+            <div class="vendor-chat-msg-actions">
+                @if (Model.IsMine)
+                {
+                    <button type="button" class="icon-btn chat-edit-btn" title="Edit message" data-id="@Model.Id">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                    </button>
+                    <button type="button" class="icon-btn icon-btn-danger chat-delete-all-btn" title="Delete for everyone" data-id="@Model.Id">
+                        <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+                    </button>
+                }
+                <button type="button" class="icon-btn chat-hide-btn" title="Delete for me" data-id="@Model.Id">
+                    <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19m-6.72-1.07a3 3 0 11-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                </button>
+            </div>
+        }
+    </div>
+</div>

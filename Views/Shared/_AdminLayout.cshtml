@@ -8,6 +8,7 @@
     var initials = currentUser?.FullName?.Length > 0
         ? currentUser.FullName[..1].ToUpper()
         : (currentUser?.Email?[..1].ToUpper() ?? "A");
+    var profileImage = currentUser?.ProfileImageUrl;
     var controller = ViewContext.RouteData.Values["controller"]?.ToString();
     var action = ViewContext.RouteData.Values["action"]?.ToString();
 }
@@ -102,12 +103,20 @@
                 <div class="topbar-user-menu" id="userMenu">
                     <button class="user-menu-trigger" id="userMenuToggle" type="button" aria-haspopup="true" aria-expanded="false">
                         <span class="user-menu-name">@(currentUser?.FullName ?? currentUser?.Email)</span>
-                        <div class="user-avatar">@initials</div>
+                        <div class="user-avatar">
+                            @if (!string.IsNullOrEmpty(profileImage))
+                            { <img src="@profileImage" alt="Profile" /> }
+                            else { @initials }
+                        </div>
                         <svg class="user-menu-chevron" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></svg>
                     </button>
                     <div class="user-menu-dropdown" id="userMenuDropdown">
                         <div class="user-menu-header">
-                            <div class="user-avatar user-avatar-lg">@initials</div>
+                            <div class="user-avatar user-avatar-lg">
+                                @if (!string.IsNullOrEmpty(profileImage))
+                                { <img src="@profileImage" alt="Profile" /> }
+                                else { @initials }
+                            </div>
                             <div>
                                 <strong>@(currentUser?.FullName ?? "Admin")</strong>
                                 <span>@currentUser?.Email</span>
@@ -150,6 +159,10 @@
         </div>
     </div>
     <script src="~/js/app.js" asp-append-version="true"></script>
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <script src="~/js/admin-notify.js" asp-append-version="true"></script>
+    }
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

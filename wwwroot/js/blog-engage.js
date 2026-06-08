@@ -34,19 +34,52 @@
         });
     });
 
+    const getSharePayload = (wrap) => {
+        const url = wrap?.dataset.shareUrl || '';
+        const title = wrap?.dataset.shareTitle || 'Blog';
+        const text = wrap?.dataset.shareText || `${title}\n\nRead here: ${url}`;
+        return { url, title, text };
+    };
+
+    const flashTitle = (btn, message) => {
+        const prev = btn.title;
+        btn.title = message;
+        setTimeout(() => { btn.title = prev; }, 2000);
+    };
+
     document.querySelectorAll('.blog-share-btn[data-share="copy"]').forEach(btn => {
         btn.addEventListener('click', async () => {
             const wrap = btn.closest('.blog-engage');
-            const url = wrap?.dataset.shareUrl;
-            if (!url) return;
+            const { text } = getSharePayload(wrap);
+            if (!text) return;
 
             try {
-                await navigator.clipboard.writeText(url);
-                const prev = btn.title;
-                btn.title = 'Link copied!';
-                setTimeout(() => { btn.title = prev || 'Copy link'; }, 2000);
+                await navigator.clipboard.writeText(text);
+                flashTitle(btn, 'Link copied!');
             } catch {
-                window.prompt('Copy this link:', url);
+                window.prompt('Copy this link:', text);
+            }
+        });
+    });
+
+    document.querySelectorAll('.blog-share-btn[data-share="native"]').forEach(btn => {
+        btn.addEventListener('click', async () => {
+            const wrap = btn.closest('.blog-engage');
+            const { url, title, text } = getSharePayload(wrap);
+            if (!url) return;
+
+            if (navigator.share) {
+                try {
+                    await navigator.share({ title, text, url });
+                    return;
+                } catch { /* user cancelled or unsupported */ }
+            }
+
+            try {
+                await navigator.clipboard.writeText(text);
+                flashTitle(btn, 'Copied!');
+            } catch {
+                window.prompt('Copy and share:', text);
             }
         });
     });

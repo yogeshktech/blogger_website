@@ -37,6 +37,8 @@ public class VendorChatMessage
     public DateTime CreatedAt { get; set; }
     public string? SenderName { get; set; }
     public bool IsMine { get; set; }
+    public DateTime? EditedAt { get; set; }
+    public bool DeletedForEveryone { get; set; }
 }
 
 public static class VendorConnectionStatus

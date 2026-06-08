@@ -1,205 +1,151 @@
 ﻿@model Blogger_website.Models.ViewModels.HomeViewModel
 @using Blogger_website.Models.Helpers
-
 @{
-
     ViewData["Title"] = "Home";
-
+    var browse = Model.CategoryBrowse;
 }
-
-
 
 <section class="hero">
-
     <div>
-
-        <div class="hero-badge">✦ Stories worth reading</div>
-
-        <h1>Discover ideas that <span>inspire</span> you</h1>
-
-        <p>Explore articles from talented writers. Share your thoughts, join the conversation, or start writing your own blog today.</p>
-
+        <div class="hero-badge">✦ India's growing blogger community</div>
+        <h1>Write. Publish. <span>Grow.</span></h1>
+        <p>Share your knowledge on tech, study, comedy, news & more. Connect with fellow bloggers, get readers, likes & vendor network — all in one place.</p>
         <div class="hero-actions">
-
             <a asp-controller="Blog" asp-action="Index" class="btn-brand">Explore Blogs</a>
-
-            <a asp-area="Identity" asp-page="/Account/Register" class="btn-outline-brand">Become a Writer</a>
-
+            <a asp-area="Identity" asp-page="/Account/Register" class="btn-outline-brand">Start Writing Free</a>
         </div>
-
+        <div class="hero-stats">
+            <div><strong>Instant</strong><span>Start blogging after OTP</span></div>
+            <div><strong>Free</strong><span>No cost to publish</span></div>
+            <div><strong>Network</strong><span>Chat with vendors</span></div>
+        </div>
     </div>
-
     <div class="hero-visual">
-
         <div class="hero-visual-inner">
-
             <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-
             <p style="color:var(--text-muted);font-weight:600;margin-top:0.5rem;">Your story starts here</p>
-
         </div>
-
     </div>
-
 </section>
-
-
 
 @if (Model.CategoryTree.Any())
-
 {
-
     <section class="section">
-
         <div class="section-header">
-
             <div>
-
                 <h2>Browse by Topic</h2>
-
-                <p>Category → Sub Category → Child Category</p>
-
+                <p>Tap a category → subcategory → blogs</p>
             </div>
-
             @if (Model.SelectedCategoryId.HasValue)
-
             {
-
                 <a asp-action="Index" class="btn-ghost btn-sm">Clear filter ×</a>
-
             }
-
         </div>
-
-        @await Html.PartialAsync("_CategoryTreeNav", (Model.CategoryTree, Model.SelectedCategoryId, "Home", "Index", (int?)null))
-
+        @await Html.PartialAsync("_CategoryCards", browse)
     </section>
-
 }
 
+@if (browse.ShowBlogs)
+{
+    <section class="section">
+        <div class="section-header">
+            <div>
+                @if (Model.SelectedCategoryId.HasValue && !string.IsNullOrEmpty(Model.SelectedCategoryPath))
+                {
+                    <h2>Blogs in @Model.SelectedCategoryPath</h2>
+                    <p>@Model.Blogs.Count article@(Model.Blogs.Count != 1 ? "s" : "") found</p>
+                }
+                else
+                {
+                    <h2>Latest Articles</h2>
+                    <p>Fresh reads from our community</p>
+                }
+            </div>
+            <a asp-controller="Blog" asp-action="Index" asp-route-categoryId="@Model.SelectedCategoryId" class="btn-ghost btn-sm">View all →</a>
+        </div>
 
+        @if (!Model.Blogs.Any())
+        {
+            <div class="empty-state">
+                <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2"/></svg>
+                <h3>No blogs found</h3>
+                <p>@(Model.SelectedCategoryId.HasValue ? "Try another category." : "Be the first to publish a story!")</p>
+            </div>
+        }
+        else
+        {
+            <div class="blog-grid">
+                @foreach (var blog in Model.Blogs)
+                {
+                    <article class="blog-card">
+                        <div class="blog-card-img">
+                            @if (!string.IsNullOrEmpty(blog.FeaturedImage))
+                            { <img src="@blog.FeaturedImage" alt="@blog.Title" loading="lazy" /> }
+                        </div>
+                        <div class="blog-card-body">
+                            @if (!string.IsNullOrEmpty(blog.CategoryPath))
+                            { <span class="blog-card-tag">@blog.CategoryPath</span> }
+                            <h3>@blog.Title</h3>
+                            <p>@(blog.ShortDescription ?? "")</p>
+                            <div class="blog-card-meta">
+                                <span>@(blog.AuthorName ?? "Unknown") · @blog.CreatedAt.ToString("dd MMM yyyy")</span>
+                                <a asp-controller="Blog" asp-action="Details" asp-route-slug="@blog.Slug" class="read-link">Read →</a>
+                            </div>
+                            @await Html.PartialAsync("_BlogLikeShare", (blog.Id, blog.Slug, blog.Title, blog.LikeCount, blog.IsLikedByViewer, BlogEngagementHelper.BuildShareUrl(Context, blog.Slug), true))
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+    </section>
+}
 
 <section class="section">
-
-    <div class="section-header">
-
-        <div>
-
-            @if (Model.SelectedCategoryId.HasValue && !string.IsNullOrEmpty(Model.SelectedCategoryPath))
-
-            {
-
-                <h2>Blogs in @Model.SelectedCategoryPath</h2>
-
-                <p>@Model.Blogs.Count article@(Model.Blogs.Count != 1 ? "s" : "") in this category</p>
-
-            }
-
-            else
-
-            {
-
-                <h2>Latest Articles</h2>
-
-                <p>Fresh reads from our community</p>
-
-            }
-
+    <div class="section-header"><div><h2>Why Blog on BlogHub?</h2><p>Everything you need to grow as a writer</p></div></div>
+    <div class="feature-grid">
+        <div class="feature-card">
+            <div class="feature-icon">📝</div>
+            <h3>Publish Instantly</h3>
+            <p>Register, verify email with OTP, and start posting blogs immediately — no waiting for approval.</p>
         </div>
-
-        <a asp-controller="Blog" asp-action="Index" asp-route-categoryId="@Model.SelectedCategoryId" class="btn-ghost btn-sm">View all →</a>
-
+        <div class="feature-card">
+            <div class="feature-icon">🏷️</div>
+            <h3>Smart Categories</h3>
+            <p>Organize posts in Category → Sub → Child structure so readers find your content easily.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">❤️</div>
+            <h3>Likes & Shares</h3>
+            <p>Readers can like and share your articles on WhatsApp, Facebook & X.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">🤝</div>
+            <h3>Vendor Network</h3>
+            <p>Connect with other bloggers, send requests, and chat after they accept.</p>
+        </div>
     </div>
-
-
-
-    @if (!Model.Blogs.Any())
-
-    {
-
-        <div class="empty-state">
-
-            <svg fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24"><path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2"/></svg>
-
-            <h3>No blogs found</h3>
-
-            <p>@(Model.SelectedCategoryId.HasValue ? "Try another category." : "Be the first to publish a story!")</p>
-
-        </div>
-
-    }
-
-    else
-
-    {
-
-        <div class="blog-grid">
-
-            @foreach (var blog in Model.Blogs)
-
-            {
-
-                <article class="blog-card">
-
-                    <div class="blog-card-img">
-
-                        @if (!string.IsNullOrEmpty(blog.FeaturedImage))
-
-                        { <img src="@blog.FeaturedImage" alt="@blog.Title" loading="lazy" /> }
-
-                    </div>
-
-                    <div class="blog-card-body">
-
-                        @if (!string.IsNullOrEmpty(blog.CategoryPath))
-
-                        { <span class="blog-card-tag">@blog.CategoryPath</span> }
-
-                        <h3>@blog.Title</h3>
-
-                        <p>@(blog.ShortDescription ?? "")</p>
-
-                        <div class="blog-card-meta">
-
-                            <span>@(blog.AuthorName ?? "Unknown") · @blog.CreatedAt.ToString("dd MMM yyyy")</span>
-
-                            <a asp-controller="Blog" asp-action="Details" asp-route-slug="@blog.Slug" class="read-link">Read →</a>
-
-                        </div>
-
-                        @await Html.PartialAsync("_BlogLikeShare", (blog.Id, blog.Slug, blog.Title, blog.LikeCount, blog.IsLikedByViewer, BlogEngagementHelper.BuildShareUrl(Context, blog.Slug), true))
-
-                    </div>
-
-                </article>
-
-            }
-
-        </div>
-
-    }
-
 </section>
 
-
+<section class="section">
+    <div class="section-header"><div><h2>How It Works</h2><p>3 simple steps to go live</p></div></div>
+    <div class="steps-row">
+        <div class="step-card"><span class="step-num">1</span><h4>Register</h4><p>Create your free blogger account with email OTP verification.</p></div>
+        <div class="step-card"><span class="step-num">2</span><h4>Write</h4><p>Add title, image, category, labels and publish your first blog.</p></div>
+        <div class="step-card"><span class="step-num">3</span><h4>Grow</h4><p>Get readers, comments, likes and connect with the vendor network.</p></div>
+    </div>
+</section>
 
 <section class="section" style="padding-bottom:5rem;">
-
-    <div style="background:linear-gradient(135deg,var(--primary),var(--primary-dark));border-radius:var(--radius);padding:3rem 2rem;text-align:center;color:#fff;">
-
-        <h2 style="font-size:1.75rem;font-weight:800;margin-bottom:0.75rem;">Want to share your story?</h2>
-
-        <p style="opacity:0.85;margin-bottom:1.5rem;max-width:480px;margin-left:auto;margin-right:auto;">Register as an admin, get approved by our team, and start publishing your blogs.</p>
-
-        <a asp-area="Identity" asp-page="/Account/Register" class="btn-accent">Get Started Free</a>
-
+    <div class="cta-banner">
+        <h2>Ready to share your expertise?</h2>
+        <p>Join BlogHub today — write about PHP, Java, .NET, study tips, jokes, news or anything you're passionate about.</p>
+        <div class="hero-actions" style="justify-content:center;margin-top:1.25rem;">
+            <a asp-area="Identity" asp-page="/Account/Register" class="btn-accent">Create Free Account</a>
+            <a asp-area="Identity" asp-page="/Account/Login" class="btn-outline-brand" style="border-color:rgba(255,255,255,0.5);color:#fff;">Sign In</a>
+        </div>
     </div>
-
 </section>
-
-
 
 @section Scripts {
     <script src="~/js/blog-engage.js" asp-append-version="true"></script>
 }
-

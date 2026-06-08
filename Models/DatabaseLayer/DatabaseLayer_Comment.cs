@@ -22,9 +22,12 @@ public partial class DatabaseLayer
         await conn.OpenAsync();
 
         var sql = """
-            SELECT c."Id", c."BlogId", c."UserId", c."AuthorName", c."AuthorEmail",
+            SELECT c."Id", c."BlogId", c."UserId",
+                   COALESCE(NULLIF(TRIM(c."AuthorName"), ''), u."FullName", u."Email", u."UserName", 'Guest') AS "AuthorName",
+                   c."AuthorEmail",
                    c."Content", c."IsApproved", c."CreatedAt", c."ParentId"
             FROM "Comments" c
+            LEFT JOIN "AspNetUsers" u ON c."UserId" = u."Id"
             WHERE c."BlogId" = @blogId
             """;
 

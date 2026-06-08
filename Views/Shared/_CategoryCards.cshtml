@@ -1,0 +1,55 @@
+@model Blogger_website.Models.ViewModels.CategoryBrowseViewModel
+
+@if (Model.Breadcrumb.Count > 1)
+{
+    <nav class="category-breadcrumb" aria-label="Category path">
+        @for (var i = 0; i < Model.Breadcrumb.Count; i++)
+        {
+            var item = Model.Breadcrumb[i];
+            if (i > 0) { <span class="category-breadcrumb-sep">›</span> }
+            if (item.Id == Model.SelectedCategoryId)
+            {
+                <span class="category-breadcrumb-current">@item.Name</span>
+            }
+            else
+            {
+                <a asp-controller="@Model.ControllerName" asp-action="@Model.ActionName"
+                   asp-route-categoryId="@item.Id" asp-route-labelId="@Model.LabelId">@item.Name</a>
+            }
+        }
+    </nav>
+}
+
+@if (Model.Cards.Any())
+{
+    <div class="category-cards-header">
+        <h3>@Model.LevelTitle</h3>
+        @if (Model.SelectedCategoryId.HasValue)
+        {
+            var parentId = Model.Breadcrumb.Count >= 2 ? Model.Breadcrumb[^2].Id : null;
+            <a asp-controller="@Model.ControllerName" asp-action="@Model.ActionName"
+               asp-route-categoryId="@parentId" asp-route-labelId="@Model.LabelId"
+               class="btn-ghost btn-sm">← Back</a>
+        }
+    </div>
+
+    <div class="category-cards-grid">
+        @foreach (var cat in Model.Cards)
+        {
+            var hasChildren = cat.Children.Any(c => c.IsActive);
+            var icon = cat.Name.Length > 0 ? cat.Name[0].ToString().ToUpper() : "?";
+            var hue = Math.Abs(cat.Name.GetHashCode()) % 360;
+
+            <a asp-controller="@Model.ControllerName" asp-action="@Model.ActionName"
+               asp-route-categoryId="@cat.Id" asp-route-labelId="@Model.LabelId"
+               class="category-card">
+                <div class="category-card-icon" style="--cat-hue:@hue">@icon</div>
+                <div class="category-card-body">
+                    <strong>@cat.Name</strong>
+                    <span>@(hasChildren ? $"{cat.Children.Count(c => c.IsActive)} subcategories" : "View blogs")</span>
+                </div>
+                <svg class="category-card-arrow" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></svg>
+            </a>
+        }
+    </div>
+}

@@ -174,7 +174,32 @@ CREATE INDEX IF NOT EXISTS "IX_BlogLikes_BlogId" ON "BlogLikes" ("BlogId");
 
 
 -- -----------------------------------------------------------------------------
--- 9. Default Roles (agar nahi hain)
+-- 10. Profile image on users
+-- -----------------------------------------------------------------------------
+ALTER TABLE "AspNetUsers" ADD COLUMN IF NOT EXISTS "ProfileImageUrl" TEXT NULL;
+
+
+-- -----------------------------------------------------------------------------
+-- 12. Chat message edit / delete
+-- -----------------------------------------------------------------------------
+ALTER TABLE "VendorChatMessages" ADD COLUMN IF NOT EXISTS "EditedAt" TIMESTAMP NULL;
+ALTER TABLE "VendorChatMessages" ADD COLUMN IF NOT EXISTS "DeletedForEveryone" BOOLEAN NOT NULL DEFAULT FALSE;
+
+CREATE TABLE IF NOT EXISTS "VendorChatMessageHidden"
+(
+    "MessageId" INT NOT NULL,
+    "UserId"    TEXT NOT NULL,
+    "HiddenAt"  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "PK_VendorChatMessageHidden" PRIMARY KEY ("MessageId", "UserId"),
+    CONSTRAINT "FK_VendorChatMessageHidden_Message"
+        FOREIGN KEY ("MessageId") REFERENCES "VendorChatMessages" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_VendorChatMessageHidden_User"
+        FOREIGN KEY ("UserId") REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE
+);
+
+
+-- -----------------------------------------------------------------------------
+-- 11. Default Roles (agar nahi hain)
 -- -----------------------------------------------------------------------------
 INSERT INTO "AspNetRoles" ("Id", "Name", "NormalizedName", "ConcurrencyStamp")
 SELECT gen_random_uuid()::text, 'SuperAdmin', 'SUPERADMIN', gen_random_uuid()::text

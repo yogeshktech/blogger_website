@@ -17,8 +17,12 @@ public partial interface IDatabaseLayer
     Task<VendorChatThread?> GetChatThreadByIdAsync(int threadId);
     Task<VendorChatThread?> GetChatThreadByUsersAsync(string userA, string userB);
     Task<List<VendorChatThread>> GetChatThreadsForUserAsync(string userId);
-    Task<List<VendorChatMessage>> GetChatMessagesAsync(int threadId, int? afterId = null);
+    Task<List<VendorChatMessage>> GetChatMessagesAsync(int threadId, int? afterId = null, string? viewerUserId = null);
+    Task<VendorChatMessage?> GetChatMessageByIdAsync(int messageId);
     Task<int> CreateChatMessageAsync(int threadId, string senderUserId, string content);
+    Task<bool> UpdateChatMessageContentAsync(int messageId, string content);
+    Task<bool> HideChatMessageForUserAsync(int messageId, string userId);
+    Task<bool> DeleteChatMessageForEveryoneAsync(int messageId);
     Task<bool> IsUserInThreadAsync(int threadId, string userId);
 }
 
@@ -31,7 +35,7 @@ public partial class DatabaseLayer
         await conn.OpenAsync();
 
         const string sql = """
-            SELECT u."Id", COALESCE(u."FullName", u."Email", u."UserName") AS "FullName", u."Email"
+            SELECT u."Id", COALESCE(u."FullName", u."Email", u."UserName") AS "FullName", u."Email", u."ProfileImageUrl"
             FROM "AspNetUsers" u
             INNER JOIN "AspNetUserRoles" ur ON u."Id" = ur."UserId"
             INNER JOIN "AspNetRoles" r ON ur."RoleId" = r."Id"
@@ -49,7 +53,8 @@ public partial class DatabaseLayer
             {
                 UserId = reader.GetString(0),
                 FullName = reader.IsDBNull(1) ? reader.GetString(2) : reader.GetString(1),
-                Email = reader.IsDBNull(2) ? "" : reader.GetString(2)
+                Email = reader.IsDBNull(2) ? "" : reader.GetString(2),
+                ProfileImageUrl = reader.IsDBNull(3) ? null : reader.GetString(3)
             });
         }
 
@@ -320,19 +325,28 @@ public partial class DatabaseLayer
         return threads;
     }
 
-    public async Task<List<VendorChatMessage>> GetChatMessagesAsync(int threadId, int? afterId = null)
+    public async Task<List<VendorChatMessage>> GetChatMessagesAsync(int threadId, int? afterId = null, string? viewerUserId = null)
     {
         var messages = new List<VendorChatMessage>();
         await using var conn = new NpgsqlConnection(DbConnection);
         await conn.OpenAsync();
 
         var sql = """
-            SELECT m."Id", m."ThreadId", m."SenderUserId", m."Content", m."CreatedAt",
-                   COALESCE(u."FullName", u."Email", u."UserName") AS "SenderName"
+            SELECT m."Id", m."ThreadId", m."SenderUserId", m."Content", m."CreatedAt", m."EditedAt", m."DeletedForEveryone",
+                   COALESCE(NULLIF(TRIM(u."FullName"), ''), u."Email", u."UserName", 'Vendor') AS "SenderName"
             FROM "VendorChatMessages" m
             INNER JOIN "AspNetUsers" u ON m."SenderUserId" = u."Id"
-            WHERE m."ThreadId" = @threadId
             """;
+
+        if (!string.IsNullOrEmpty(viewerUserId))
+            sql += """
+                 LEFT JOIN "VendorChatMessageHidden" h ON h."MessageId" = m."Id" AND h."UserId" = @viewerUserId
+                """;
+
+        sql += " WHERE m.\"ThreadId\" = @threadId";
+
+        if (!string.IsNullOrEmpty(viewerUserId))
+            sql += " AND h.\"MessageId\" IS NULL";
 
         if (afterId.HasValue)
             sql += " AND m.\"Id\" > @afterId";
@@ -343,22 +357,60 @@ public partial class DatabaseLayer
         cmd.Parameters.AddWithValue("threadId", threadId);
         if (afterId.HasValue)
             cmd.Parameters.AddWithValue("afterId", afterId.Value);
+        if (!string.IsNullOrEmpty(viewerUserId))
+            cmd.Parameters.AddWithValue("viewerUserId", viewerUserId);
 
         await using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
+            var deleted = reader.GetBoolean(6);
             messages.Add(new VendorChatMessage
             {
                 Id = reader.GetInt32(0),
                 ThreadId = reader.GetInt32(1),
                 SenderUserId = reader.GetString(2),
-                Content = reader.GetString(3),
+                Content = deleted ? string.Empty : reader.GetString(3),
                 CreatedAt = reader.GetDateTime(4),
-                SenderName = reader.IsDBNull(5) ? "Vendor" : reader.GetString(5)
+                EditedAt = reader.IsDBNull(5) ? null : reader.GetDateTime(5),
+                DeletedForEveryone = deleted,
+                SenderName = reader.IsDBNull(7) ? "Vendor" : reader.GetString(7)
             });
         }
 
         return messages;
+    }
+
+    public async Task<VendorChatMessage?> GetChatMessageByIdAsync(int messageId)
+    {
+        await using var conn = new NpgsqlConnection(DbConnection);
+        await conn.OpenAsync();
+
+        const string sql = """
+            SELECT m."Id", m."ThreadId", m."SenderUserId", m."Content", m."CreatedAt", m."EditedAt", m."DeletedForEveryone",
+                   COALESCE(NULLIF(TRIM(u."FullName"), ''), u."Email", u."UserName", 'Vendor') AS "SenderName"
+            FROM "VendorChatMessages" m
+            INNER JOIN "AspNetUsers" u ON m."SenderUserId" = u."Id"
+            WHERE m."Id" = @id
+            """;
+
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", messageId);
+
+        await using var reader = await cmd.ExecuteReaderAsync();
+        if (!await reader.ReadAsync()) return null;
+
+        var deleted = reader.GetBoolean(6);
+        return new VendorChatMessage
+        {
+            Id = reader.GetInt32(0),
+            ThreadId = reader.GetInt32(1),
+            SenderUserId = reader.GetString(2),
+            Content = deleted ? string.Empty : reader.GetString(3),
+            CreatedAt = reader.GetDateTime(4),
+            EditedAt = reader.IsDBNull(5) ? null : reader.GetDateTime(5),
+            DeletedForEveryone = deleted,
+            SenderName = reader.IsDBNull(7) ? "Vendor" : reader.GetString(7)
+        };
     }
 
     public async Task<int> CreateChatMessageAsync(int threadId, string senderUserId, string content)
@@ -379,6 +431,61 @@ public partial class DatabaseLayer
         cmd.Parameters.AddWithValue("createdAt", DateTime.UtcNow);
 
         return Convert.ToInt32(await cmd.ExecuteScalarAsync());
+    }
+
+    public async Task<bool> UpdateChatMessageContentAsync(int messageId, string content)
+    {
+        await using var conn = new NpgsqlConnection(DbConnection);
+        await conn.OpenAsync();
+
+        const string sql = """
+            UPDATE "VendorChatMessages"
+            SET "Content" = @content, "EditedAt" = @editedAt, "DeletedForEveryone" = FALSE
+            WHERE "Id" = @id AND "DeletedForEveryone" = FALSE
+            """;
+
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("content", content);
+        cmd.Parameters.AddWithValue("editedAt", DateTime.UtcNow);
+        cmd.Parameters.AddWithValue("id", messageId);
+
+        return await cmd.ExecuteNonQueryAsync() > 0;
+    }
+
+    public async Task<bool> HideChatMessageForUserAsync(int messageId, string userId)
+    {
+        await using var conn = new NpgsqlConnection(DbConnection);
+        await conn.OpenAsync();
+
+        const string sql = """
+            INSERT INTO "VendorChatMessageHidden" ("MessageId", "UserId", "HiddenAt")
+            VALUES (@messageId, @userId, @hiddenAt)
+            ON CONFLICT ("MessageId", "UserId") DO NOTHING
+            """;
+
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("messageId", messageId);
+        cmd.Parameters.AddWithValue("userId", userId);
+        cmd.Parameters.AddWithValue("hiddenAt", DateTime.UtcNow);
+
+        return await cmd.ExecuteNonQueryAsync() > 0;
+    }
+
+    public async Task<bool> DeleteChatMessageForEveryoneAsync(int messageId)
+    {
+        await using var conn = new NpgsqlConnection(DbConnection);
+        await conn.OpenAsync();
+
+        const string sql = """
+            UPDATE "VendorChatMessages"
+            SET "DeletedForEveryone" = TRUE, "Content" = '', "EditedAt" = NULL
+            WHERE "Id" = @id
+            """;
+
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("id", messageId);
+
+        return await cmd.ExecuteNonQueryAsync() > 0;
     }
 
     public async Task<bool> IsUserInThreadAsync(int threadId, string userId)

@@ -53,7 +53,7 @@ public class AdminRegistrationService : IAdminRegistrationService
             Email = email,
             FullName = fullName,
             EmailConfirmed = false,
-            IsActive = false
+            IsActive = true
         };
 
         var result = await _userManager.CreateAsync(user, password);
@@ -86,11 +86,12 @@ public class AdminRegistrationService : IAdminRegistrationService
             return (false, "Invalid or expired OTP. Please try again or resend.");
 
         user.EmailConfirmed = true;
+        user.IsActive = true;
         var update = await _userManager.UpdateAsync(user);
         if (!update.Succeeded)
             return (false, string.Join(", ", update.Errors.Select(e => e.Description)));
 
-        return (true, "Email verified! SuperAdmin will approve your account before you can post blogs.");
+        return (true, "Email verified! You can now sign in and start posting blogs.");
     }
 
     public async Task<(bool Success, string Message)> ResendOtpAsync(string email)

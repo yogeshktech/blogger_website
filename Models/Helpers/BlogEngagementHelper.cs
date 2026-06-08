@@ -1,4 +1,6 @@
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
 using System.Security.Claims;
 
 namespace Blogger_website.Models.Helpers;
@@ -32,7 +34,21 @@ public static class BlogEngagementHelper
 
     public static string BuildShareUrl(HttpContext context, string slug)
     {
+        var baseUrl = GetPublicBaseUrl(context);
+        return $"{baseUrl}/Blog/Details/{slug}";
+    }
+
+    public static string BuildShareText(string title, string shareUrl)
+        => $"{title.Trim()}\n\nRead here: {shareUrl}";
+
+    private static string GetPublicBaseUrl(HttpContext context)
+    {
+        var config = context.RequestServices.GetService<IConfiguration>();
+        var configured = config?["Site:PublicBaseUrl"]?.Trim().TrimEnd('/');
+        if (!string.IsNullOrEmpty(configured))
+            return configured;
+
         var request = context.Request;
-        return $"{request.Scheme}://{request.Host}{request.PathBase}/Blog/Details/{slug}";
+        return $"{request.Scheme}://{request.Host}{request.PathBase}".TrimEnd('/');
     }
 }

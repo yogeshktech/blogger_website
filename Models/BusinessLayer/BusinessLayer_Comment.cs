@@ -81,7 +81,7 @@ public partial class BusinessLayer
             {
                 userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
                 var appUser = await _userManager.FindByIdAsync(userId!);
-                authorName = appUser?.FullName ?? appUser?.UserName ?? "User";
+                authorName = appUser?.FullName ?? appUser?.Email ?? appUser?.UserName ?? "Guest";
                 authorEmail = appUser?.Email;
             }
             else

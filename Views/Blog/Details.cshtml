@@ -3,6 +3,32 @@
 @{
     ViewData["Title"] = Model.Blog.Title;
     var blog = Model.Blog;
+    var shareUrl = BlogEngagementHelper.BuildShareUrl(Context, blog.Slug);
+    var shareDescription = !string.IsNullOrWhiteSpace(blog.ShortDescription)
+        ? blog.ShortDescription
+        : $"Read {blog.Title} on BlogHub";
+}
+
+@section Meta {
+    <link rel="canonical" href="@shareUrl" />
+    <meta name="description" content="@shareDescription" />
+    <meta property="og:type" content="article" />
+    <meta property="og:site_name" content="BlogHub" />
+    <meta property="og:title" content="@blog.Title" />
+    <meta property="og:description" content="@shareDescription" />
+    <meta property="og:url" content="@shareUrl" />
+    @if (!string.IsNullOrEmpty(blog.FeaturedImage))
+    {
+        <meta property="og:image" content="@blog.FeaturedImage" />
+    }
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="@blog.Title" />
+    <meta name="twitter:description" content="@shareDescription" />
+    <meta name="twitter:url" content="@shareUrl" />
+    @if (!string.IsNullOrEmpty(blog.FeaturedImage))
+    {
+        <meta name="twitter:image" content="@blog.FeaturedImage" />
+    }
 }
 
 <article class="article-wrap">
@@ -35,7 +61,7 @@
     </div>
 
     @{
-        var shareUrl = BlogEngagementHelper.BuildShareUrl(Context, blog.Slug);
+        // shareUrl defined at top
     }
     @await Html.PartialAsync("_BlogLikeShare", (blog.Id, blog.Slug, blog.Title, blog.LikeCount, blog.IsLikedByViewer, shareUrl, false))
 
@@ -56,7 +82,7 @@
 
         @foreach (var thread in Model.CommentThreads)
         {
-            @await Html.PartialAsync("_CommentThread", (thread, blog, Model.CanModerateComments, 0))
+            @await Html.PartialAsync("_CommentThread", (thread, blog, Model.CanModerateComments, 0, Model.CurrentUserDisplayName))
         }
 
         <div class="comment-form">
@@ -78,6 +104,10 @@
                             <input type="email" name="authorEmail" class="form-control" placeholder="you@email.com" />
                         </div>
                     </div>
+                }
+                else if (!string.IsNullOrEmpty(Model.CurrentUserDisplayName))
+                {
+                    <p class="comment-posting-as">Commenting as <strong>@Model.CurrentUserDisplayName</strong></p>
                 }
 
                 <div class="form-group">

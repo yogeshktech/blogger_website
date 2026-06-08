@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS "AspNetUsers"
     "AccessFailedCount"    INT NOT NULL DEFAULT 0,
     "FullName"             TEXT NULL,
     "IsActive"             BOOLEAN NOT NULL DEFAULT TRUE,
+    "ProfileImageUrl"      TEXT NULL,
     CONSTRAINT "PK_AspNetUsers" PRIMARY KEY ("Id")
 );
 
@@ -330,11 +331,13 @@ CREATE TABLE IF NOT EXISTS "VendorChatThreads"
 
 CREATE TABLE IF NOT EXISTS "VendorChatMessages"
 (
-    "Id"           SERIAL PRIMARY KEY,
-    "ThreadId"     INT NOT NULL,
-    "SenderUserId" TEXT NOT NULL,
-    "Content"      TEXT NOT NULL,
-    "CreatedAt"    TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "Id"                  SERIAL PRIMARY KEY,
+    "ThreadId"            INT NOT NULL,
+    "SenderUserId"        TEXT NOT NULL,
+    "Content"             TEXT NOT NULL,
+    "CreatedAt"           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "EditedAt"            TIMESTAMP NULL,
+    "DeletedForEveryone"  BOOLEAN NOT NULL DEFAULT FALSE,
     CONSTRAINT "FK_VendorChatMessages_Thread"
         FOREIGN KEY ("ThreadId") REFERENCES "VendorChatThreads" ("Id") ON DELETE CASCADE,
     CONSTRAINT "FK_VendorChatMessages_Sender"
@@ -343,6 +346,18 @@ CREATE TABLE IF NOT EXISTS "VendorChatMessages"
 
 CREATE INDEX IF NOT EXISTS "IX_VendorChatMessages_ThreadId"
     ON "VendorChatMessages" ("ThreadId");
+
+CREATE TABLE IF NOT EXISTS "VendorChatMessageHidden"
+(
+    "MessageId" INT NOT NULL,
+    "UserId"    TEXT NOT NULL,
+    "HiddenAt"  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "PK_VendorChatMessageHidden" PRIMARY KEY ("MessageId", "UserId"),
+    CONSTRAINT "FK_VendorChatMessageHidden_Message"
+        FOREIGN KEY ("MessageId") REFERENCES "VendorChatMessages" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_VendorChatMessageHidden_User"
+        FOREIGN KEY ("UserId") REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE
+);
 
 
 -- =============================================================================

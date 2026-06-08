@@ -22,7 +22,17 @@
                         @foreach (var v in Model.Vendors)
                         {
                             <tr>
-                                <td><strong>@v.FullName</strong></td>
+                                <td>
+                                    <div style="display:flex;align-items:center;gap:0.65rem;">
+                                        <div class="vendor-avatar">
+                                            @if (!string.IsNullOrEmpty(v.ProfileImageUrl))
+                                            { <img src="@v.ProfileImageUrl" alt="@v.FullName" /> }
+                                            else
+                                            { @(v.FullName.Length > 0 ? v.FullName[0].ToString().ToUpper() : "V") }
+                                        </div>
+                                        <strong>@v.FullName</strong>
+                                    </div>
+                                </td>
                                 <td>@v.Email</td>
                                 <td>
                                     @switch (v.ConnectionStatus)

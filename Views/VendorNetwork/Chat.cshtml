@@ -7,15 +7,13 @@
             <h2 style="margin:0;">Chat with @Model.OtherUserName</h2>
         </div>
     </div>
-    <div class="vendor-chat-messages" id="chatMessages" data-thread-id="@Model.Thread.Id" data-last-id="@(Model.Messages.LastOrDefault()?.Id ?? 0)">
+    <div class="vendor-chat-messages" id="chatMessages"
+         data-thread-id="@Model.Thread.Id"
+         data-last-id="@(Model.Messages.LastOrDefault()?.Id ?? 0)"
+         data-current-user="@Model.CurrentUserName">
         @foreach (var msg in Model.Messages)
         {
-            <div class="vendor-chat-row @(msg.IsMine ? "mine" : "theirs")">
-                <div class="vendor-chat-bubble" data-id="@msg.Id">
-                    <div class="vendor-chat-meta">@(msg.IsMine ? "You" : msg.SenderName) · @msg.CreatedAt.ToString("dd MMM HH:mm")</div>
-                    <div class="vendor-chat-text">@msg.Content</div>
-                </div>
-            </div>
+            @await Html.PartialAsync("_ChatMessage", msg)
         }
     </div>
     <div class="vendor-chat-compose">
