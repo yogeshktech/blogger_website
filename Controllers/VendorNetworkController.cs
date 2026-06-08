@@ -161,12 +161,12 @@ public class VendorNetworkController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> SendMessage(int threadId, string content)
+    public async Task<IActionResult> SendMessage(int threadId, string content, int? replyToMessageId)
     {
         var pending = await EnsureApprovedAsync();
         if (pending != null) return pending;
 
-        var result = await _businessLayer.SendVendorChatMessage(threadId, content, User);
+        var result = await _businessLayer.SendVendorChatMessage(threadId, content, User, replyToMessageId);
         if (result is OkObjectResult ok && Request.Headers["X-Requested-With"] == "XMLHttpRequest")
         {
             return Json(ok.Value);
@@ -179,13 +179,13 @@ public class VendorNetworkController : Controller
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetMessages(int threadId, int? afterId)
+    public async Task<IActionResult> GetMessages(int threadId, int? afterId, bool sync = false)
     {
         var userId = _userManager.GetUserId(User);
         if (string.IsNullOrEmpty(userId) || !await _databaseLayer.IsUserInThreadAsync(threadId, userId))
             return Forbid();
 
-        var messages = await _databaseLayer.GetChatMessagesAsync(threadId, afterId, userId);
+        var messages = await _databaseLayer.GetChatMessagesAsync(threadId, sync ? null : afterId, userId);
         foreach (var msg in messages)
             msg.IsMine = string.Equals(msg.SenderUserId, userId, StringComparison.Ordinal);
 
@@ -201,7 +201,11 @@ public class VendorNetworkController : Controller
                 senderName = m.SenderName,
                 senderUserId = m.SenderUserId,
                 isMine = m.IsMine,
-                deletedForEveryone = m.DeletedForEveryone
+                deletedForEveryone = m.DeletedForEveryone,
+                replyToMessageId = m.ReplyToMessageId,
+                replyToSenderName = m.ReplyToSenderName,
+                replyToContent = m.ReplyToDeleted ? null : m.ReplyToContent,
+                replyToDeleted = m.ReplyToDeleted
             })
         });
     }

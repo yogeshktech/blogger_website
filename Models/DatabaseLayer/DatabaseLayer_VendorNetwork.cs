@@ -19,7 +19,7 @@ public partial interface IDatabaseLayer
     Task<List<VendorChatThread>> GetChatThreadsForUserAsync(string userId);
     Task<List<VendorChatMessage>> GetChatMessagesAsync(int threadId, int? afterId = null, string? viewerUserId = null);
     Task<VendorChatMessage?> GetChatMessageByIdAsync(int messageId);
-    Task<int> CreateChatMessageAsync(int threadId, string senderUserId, string content);
+    Task<int> CreateChatMessageAsync(int threadId, string senderUserId, string content, int? replyToMessageId = null);
     Task<bool> UpdateChatMessageContentAsync(int messageId, string content);
     Task<bool> HideChatMessageForUserAsync(int messageId, string userId);
     Task<bool> DeleteChatMessageForEveryoneAsync(int messageId);
@@ -333,9 +333,17 @@ public partial class DatabaseLayer
 
         var sql = """
             SELECT m."Id", m."ThreadId", m."SenderUserId", m."Content", m."CreatedAt", m."EditedAt", m."DeletedForEveryone",
-                   COALESCE(NULLIF(TRIM(u."FullName"), ''), u."Email", u."UserName", 'Vendor') AS "SenderName"
+                   COALESCE(NULLIF(TRIM(u."FullName"), ''), u."Email", u."UserName", 'Vendor') AS "SenderName",
+                   m."ReplyToMessageId",
+                   COALESCE(rm."DeletedForEveryone", FALSE) AS "ReplyDeleted",
+                   CASE WHEN rm."Id" IS NULL THEN NULL
+                        WHEN rm."DeletedForEveryone" THEN ''
+                        ELSE rm."Content" END AS "ReplyContent",
+                   COALESCE(NULLIF(TRIM(ru."FullName"), ''), ru."Email", ru."UserName", 'Vendor') AS "ReplySenderName"
             FROM "VendorChatMessages" m
             INNER JOIN "AspNetUsers" u ON m."SenderUserId" = u."Id"
+            LEFT JOIN "VendorChatMessages" rm ON m."ReplyToMessageId" = rm."Id"
+            LEFT JOIN "AspNetUsers" ru ON rm."SenderUserId" = ru."Id"
             """;
 
         if (!string.IsNullOrEmpty(viewerUserId))
@@ -363,18 +371,7 @@ public partial class DatabaseLayer
         await using var reader = await cmd.ExecuteReaderAsync();
         while (await reader.ReadAsync())
         {
-            var deleted = reader.GetBoolean(6);
-            messages.Add(new VendorChatMessage
-            {
-                Id = reader.GetInt32(0),
-                ThreadId = reader.GetInt32(1),
-                SenderUserId = reader.GetString(2),
-                Content = deleted ? string.Empty : reader.GetString(3),
-                CreatedAt = reader.GetDateTime(4),
-                EditedAt = reader.IsDBNull(5) ? null : reader.GetDateTime(5),
-                DeletedForEveryone = deleted,
-                SenderName = reader.IsDBNull(7) ? "Vendor" : reader.GetString(7)
-            });
+            messages.Add(MapChatMessage(reader));
         }
 
         return messages;
@@ -387,9 +384,17 @@ public partial class DatabaseLayer
 
         const string sql = """
             SELECT m."Id", m."ThreadId", m."SenderUserId", m."Content", m."CreatedAt", m."EditedAt", m."DeletedForEveryone",
-                   COALESCE(NULLIF(TRIM(u."FullName"), ''), u."Email", u."UserName", 'Vendor') AS "SenderName"
+                   COALESCE(NULLIF(TRIM(u."FullName"), ''), u."Email", u."UserName", 'Vendor') AS "SenderName",
+                   m."ReplyToMessageId",
+                   COALESCE(rm."DeletedForEveryone", FALSE) AS "ReplyDeleted",
+                   CASE WHEN rm."Id" IS NULL THEN NULL
+                        WHEN rm."DeletedForEveryone" THEN ''
+                        ELSE rm."Content" END AS "ReplyContent",
+                   COALESCE(NULLIF(TRIM(ru."FullName"), ''), ru."Email", ru."UserName", 'Vendor') AS "ReplySenderName"
             FROM "VendorChatMessages" m
             INNER JOIN "AspNetUsers" u ON m."SenderUserId" = u."Id"
+            LEFT JOIN "VendorChatMessages" rm ON m."ReplyToMessageId" = rm."Id"
+            LEFT JOIN "AspNetUsers" ru ON rm."SenderUserId" = ru."Id"
             WHERE m."Id" = @id
             """;
 
@@ -399,28 +404,17 @@ public partial class DatabaseLayer
         await using var reader = await cmd.ExecuteReaderAsync();
         if (!await reader.ReadAsync()) return null;
 
-        var deleted = reader.GetBoolean(6);
-        return new VendorChatMessage
-        {
-            Id = reader.GetInt32(0),
-            ThreadId = reader.GetInt32(1),
-            SenderUserId = reader.GetString(2),
-            Content = deleted ? string.Empty : reader.GetString(3),
-            CreatedAt = reader.GetDateTime(4),
-            EditedAt = reader.IsDBNull(5) ? null : reader.GetDateTime(5),
-            DeletedForEveryone = deleted,
-            SenderName = reader.IsDBNull(7) ? "Vendor" : reader.GetString(7)
-        };
+        return MapChatMessage(reader);
     }
 
-    public async Task<int> CreateChatMessageAsync(int threadId, string senderUserId, string content)
+    public async Task<int> CreateChatMessageAsync(int threadId, string senderUserId, string content, int? replyToMessageId = null)
     {
         await using var conn = new NpgsqlConnection(DbConnection);
         await conn.OpenAsync();
 
         const string sql = """
-            INSERT INTO "VendorChatMessages" ("ThreadId", "SenderUserId", "Content", "CreatedAt")
-            VALUES (@threadId, @senderUserId, @content, @createdAt)
+            INSERT INTO "VendorChatMessages" ("ThreadId", "SenderUserId", "Content", "CreatedAt", "ReplyToMessageId")
+            VALUES (@threadId, @senderUserId, @content, @createdAt, @replyToMessageId)
             RETURNING "Id"
             """;
 
@@ -429,6 +423,7 @@ public partial class DatabaseLayer
         cmd.Parameters.AddWithValue("senderUserId", senderUserId);
         cmd.Parameters.AddWithValue("content", content);
         cmd.Parameters.AddWithValue("createdAt", DateTime.UtcNow);
+        cmd.Parameters.AddWithValue("replyToMessageId", (object?)replyToMessageId ?? DBNull.Value);
 
         return Convert.ToInt32(await cmd.ExecuteScalarAsync());
     }
@@ -503,6 +498,26 @@ public partial class DatabaseLayer
         cmd.Parameters.AddWithValue("userId", userId);
 
         return await cmd.ExecuteScalarAsync() != null;
+    }
+
+    private static VendorChatMessage MapChatMessage(NpgsqlDataReader reader)
+    {
+        var deleted = reader.GetBoolean(6);
+        return new VendorChatMessage
+        {
+            Id = reader.GetInt32(0),
+            ThreadId = reader.GetInt32(1),
+            SenderUserId = reader.GetString(2),
+            Content = deleted ? string.Empty : reader.GetString(3),
+            CreatedAt = reader.GetDateTime(4),
+            EditedAt = reader.IsDBNull(5) ? null : reader.GetDateTime(5),
+            DeletedForEveryone = deleted,
+            SenderName = reader.IsDBNull(7) ? "Vendor" : reader.GetString(7),
+            ReplyToMessageId = reader.IsDBNull(8) ? null : reader.GetInt32(8),
+            ReplyToDeleted = !reader.IsDBNull(9) && reader.GetBoolean(9),
+            ReplyToContent = reader.IsDBNull(10) ? null : reader.GetString(10),
+            ReplyToSenderName = reader.IsDBNull(11) ? null : reader.GetString(11)
+        };
     }
 
     private static (string U1, string U2) NormalizeUserPair(string userA, string userB)

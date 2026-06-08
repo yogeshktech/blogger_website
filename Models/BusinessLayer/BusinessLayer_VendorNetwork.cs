@@ -10,7 +10,7 @@ public partial interface IBusinessLayer
     Task<IActionResult> SendVendorConnectionRequest(string toUserId, string? introMessage, ClaimsPrincipal user);
     Task<IActionResult> AcceptVendorConnectionRequest(int requestId, ClaimsPrincipal user);
     Task<IActionResult> RejectVendorConnectionRequest(int requestId, ClaimsPrincipal user);
-    Task<IActionResult> SendVendorChatMessage(int threadId, string content, ClaimsPrincipal user);
+    Task<IActionResult> SendVendorChatMessage(int threadId, string content, ClaimsPrincipal user, int? replyToMessageId = null);
     Task<IActionResult> EditVendorChatMessage(int messageId, string content, ClaimsPrincipal user);
     Task<IActionResult> HideVendorChatMessage(int messageId, ClaimsPrincipal user);
     Task<IActionResult> DeleteVendorChatMessageForEveryone(int messageId, ClaimsPrincipal user);
@@ -127,7 +127,7 @@ public partial class BusinessLayer
         }
     }
 
-    public async Task<IActionResult> SendVendorChatMessage(int threadId, string content, ClaimsPrincipal user)
+    public async Task<IActionResult> SendVendorChatMessage(int threadId, string content, ClaimsPrincipal user, int? replyToMessageId = null)
     {
         var gate = await EnsureApprovedVendorAsync(user);
         if (gate != null) return gate;
@@ -145,7 +145,15 @@ public partial class BusinessLayer
             if (!await _databaseLayer.IsUserInThreadAsync(threadId, userId))
                 return new ForbidResult();
 
-            var messageId = await _databaseLayer.CreateChatMessageAsync(threadId, userId, content);
+            if (replyToMessageId.HasValue)
+            {
+                var replyTarget = await _databaseLayer.GetChatMessageByIdAsync(replyToMessageId.Value);
+                if (replyTarget == null || replyTarget.ThreadId != threadId)
+                    return new BadRequestObjectResult(new { Success = false, Message = "Invalid reply target" });
+            }
+
+            var messageId = await _databaseLayer.CreateChatMessageAsync(threadId, userId, content, replyToMessageId);
+            var saved = await _databaseLayer.GetChatMessageByIdAsync(messageId);
             var appUser = await _userManager.FindByIdAsync(userId);
             var senderName = appUser?.FullName ?? appUser?.Email ?? appUser?.UserName ?? "You";
 
@@ -157,12 +165,16 @@ public partial class BusinessLayer
                 {
                     Id = messageId,
                     Content = content,
-                    CreatedAt = DateTime.UtcNow,
+                    CreatedAt = saved?.CreatedAt ?? DateTime.UtcNow,
                     SenderName = senderName,
                     SenderUserId = userId,
                     IsMine = true,
                     DeletedForEveryone = false,
-                    EditedAt = (DateTime?)null
+                    EditedAt = (DateTime?)null,
+                    ReplyToMessageId = saved?.ReplyToMessageId,
+                    ReplyToSenderName = saved?.ReplyToSenderName,
+                    ReplyToContent = saved?.ReplyToDeleted == true ? null : saved?.ReplyToContent,
+                    ReplyToDeleted = saved?.ReplyToDeleted ?? false
                 }
             });
         }

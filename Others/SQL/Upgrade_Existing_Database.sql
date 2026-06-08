@@ -199,6 +199,23 @@ CREATE TABLE IF NOT EXISTS "VendorChatMessageHidden"
 
 
 -- -----------------------------------------------------------------------------
+-- 13. Chat reply-to message reference
+-- -----------------------------------------------------------------------------
+ALTER TABLE "VendorChatMessages" ADD COLUMN IF NOT EXISTS "ReplyToMessageId" INT NULL;
+
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'FK_VendorChatMessages_ReplyTo'
+    ) THEN
+        ALTER TABLE "VendorChatMessages"
+            ADD CONSTRAINT "FK_VendorChatMessages_ReplyTo"
+            FOREIGN KEY ("ReplyToMessageId") REFERENCES "VendorChatMessages" ("Id") ON DELETE SET NULL;
+    END IF;
+END $$;
+
+
+-- -----------------------------------------------------------------------------
 -- 11. Default Roles (agar nahi hain)
 -- -----------------------------------------------------------------------------
 INSERT INTO "AspNetRoles" ("Id", "Name", "NormalizedName", "ConcurrencyStamp")

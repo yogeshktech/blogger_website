@@ -27,6 +27,8 @@
         return !!(currentUserId && senderId && senderId === currentUserId);
     };
 
+    const deletedLabel = (isMine) => isMine ? 'You deleted this message' : 'This message was deleted';
+
     const icons = {
         reply: '<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 10h10a5 5 0 015 5v2M3 10l4-4M3 10l4 4"/></svg>',
         copy: '<svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>',
@@ -46,6 +48,20 @@
     const escapeHtml = (s) => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     const escapeAttr = (s) => escapeHtml(s).replace(/"/g, '&quot;');
 
+    const renderQuoteHtml = (msg) => {
+        if (!msg.replyToMessageId) return '';
+        const replyName = msg.replyToSenderName || 'Vendor';
+        const displayReplyName = (msg.isMine && replyName === (msg.senderName || currentUser)) ? 'You' : replyName;
+        const replyText = msg.replyToDeleted
+            ? 'This message was deleted'
+            : (msg.replyToContent || 'This message was deleted');
+        return `
+            <div class="chat-quote-block">
+                <strong>${escapeHtml(displayReplyName)}</strong>
+                <p>${escapeHtml(replyText.length > 120 ? replyText.slice(0, 120) + '…' : replyText)}</p>
+            </div>`;
+    };
+
     const renderMessageHtml = (msg) => {
         const isMine = msg.senderUserId
             ? msg.senderUserId === currentUserId
@@ -53,8 +69,9 @@
         const deleted = msg.deletedForEveryone === true;
         const senderName = escapeHtml(msg.senderName || (isMine ? currentUser : 'Vendor'));
         const content = deleted ? '' : escapeAttr(msg.content || '');
-        const text = deleted ? 'This message was deleted' : (msg.content || '');
+        const text = deleted ? deletedLabel(isMine) : (msg.content || '');
         const edited = msg.editedAt ? '<span class="chat-edited-tag">edited</span>' : '';
+        const quote = deleted ? '' : renderQuoteHtml(msg);
 
         return `
         <div class="vendor-chat-row ${isMine ? 'mine' : 'theirs'}" data-row-id="${msg.id}">
@@ -70,6 +87,7 @@
                     <span>· ${formatTime(msg.createdAt)}</span>
                     ${edited}
                 </div>
+                ${quote}
                 <div class="vendor-chat-text ${deleted ? 'chat-deleted-text' : ''}">${escapeHtml(text)}</div>
             </div>
         </div>`;
@@ -82,6 +100,57 @@
         scrollToBottom();
     };
 
+    const updateMessageBubble = (msg) => {
+        const bubble = document.querySelector(`.vendor-chat-bubble[data-id="${msg.id}"]`);
+        if (!bubble) {
+            appendMessage(msg);
+            return;
+        }
+
+        const isMine = msg.senderUserId === currentUserId || msg.isMine === true;
+        const deleted = msg.deletedForEveryone === true;
+
+        bubble.dataset.deleted = deleted ? 'true' : 'false';
+        bubble.dataset.content = deleted ? '' : escapeAttr(msg.content || '');
+
+        const row = bubble.closest('.vendor-chat-row');
+        if (row) {
+            row.classList.toggle('mine', isMine);
+            row.classList.toggle('theirs', !isMine);
+        }
+
+        bubble.querySelector('.chat-quote-block')?.remove();
+
+        const textEl = bubble.querySelector('.vendor-chat-text');
+        if (textEl) {
+            if (deleted) {
+                textEl.textContent = deletedLabel(isMine);
+                textEl.classList.add('chat-deleted-text');
+            } else {
+                textEl.textContent = msg.content || '';
+                textEl.classList.remove('chat-deleted-text');
+                if (msg.replyToMessageId) {
+                    textEl.insertAdjacentHTML('beforebegin', renderQuoteHtml(msg));
+                }
+            }
+        }
+
+        const meta = bubble.querySelector('.vendor-chat-meta');
+        if (meta) {
+            let tag = meta.querySelector('.chat-edited-tag');
+            if (msg.editedAt && !deleted) {
+                if (!tag) {
+                    tag = document.createElement('span');
+                    tag.className = 'chat-edited-tag';
+                    tag.textContent = 'edited';
+                    meta.appendChild(tag);
+                }
+            } else {
+                tag?.remove();
+            }
+        }
+    };
+
     const postAction = async (url, body) => {
         const params = new URLSearchParams(body);
         params.append('__RequestVerificationToken', getToken());
@@ -90,14 +159,15 @@
         return res.json();
     };
 
-    const markDeleted = (id) => {
+    const markDeleted = (id, isMine) => {
         const bubble = document.querySelector(`.vendor-chat-bubble[data-id="${id}"]`);
         if (!bubble) return;
         bubble.dataset.deleted = 'true';
         bubble.dataset.content = '';
+        bubble.querySelector('.chat-quote-block')?.remove();
         const textEl = bubble.querySelector('.vendor-chat-text');
         if (textEl) {
-            textEl.textContent = 'This message was deleted';
+            textEl.textContent = deletedLabel(isMine ?? isOwnMessage(bubble));
             textEl.classList.add('chat-deleted-text');
         }
         bubble.querySelector('.chat-edited-tag')?.remove();
@@ -170,9 +240,10 @@
     };
 
     const setReply = (bubble) => {
+        const own = isOwnMessage(bubble);
         replyTarget = {
             id: bubble.dataset.id,
-            sender: bubble.dataset.sender,
+            sender: own ? 'You' : bubble.dataset.sender,
             content: bubble.dataset.content
         };
         if (replyBar && replyToName && replyToText) {
@@ -218,12 +289,8 @@
     };
 
     const sendMessage = async () => {
-        let content = input?.value.trim() || '';
+        const content = input?.value.trim() || '';
         if (!content) return;
-
-        if (replyTarget) {
-            content = `↩ ${replyTarget.sender}: ${replyTarget.content}\n\n${content}`;
-        }
 
         const btn = form?.querySelector('button[type="submit"]');
         if (btn) btn.disabled = true;
@@ -231,6 +298,9 @@
         try {
             const body = new URLSearchParams(new FormData(form));
             body.set('content', content);
+            if (replyTarget?.id) {
+                body.set('replyToMessageId', replyTarget.id);
+            }
 
             const res = await fetch(form.action, {
                 method: 'POST',
@@ -250,7 +320,11 @@
                     senderName: data.senderName ?? data.SenderName ?? currentUser,
                     senderUserId: data.senderUserId ?? data.SenderUserId ?? currentUserId,
                     isMine: true,
-                    deletedForEveryone: false
+                    deletedForEveryone: false,
+                    replyToMessageId: data.replyToMessageId ?? data.ReplyToMessageId,
+                    replyToSenderName: data.replyToSenderName ?? data.ReplyToSenderName,
+                    replyToContent: data.replyToContent ?? data.ReplyToContent,
+                    replyToDeleted: data.replyToDeleted ?? data.ReplyToDeleted ?? false
                 });
                 input.value = '';
                 clearReply();
@@ -264,7 +338,6 @@
         }
     };
 
-    // Message click → WhatsApp-style menu
     container.addEventListener('click', (e) => {
         const bubble = e.target.closest('.chat-bubble-selectable');
         if (!bubble || bubble.dataset.deleted === 'true') return;
@@ -303,6 +376,7 @@
 
         const action = btn.dataset.delete;
         const id = deleteTargetId;
+        const isMine = deleteTargetIsMine;
         closeDeleteModal();
 
         if (action === 'cancel') return;
@@ -312,12 +386,12 @@
                 const json = await postAction('/VendorNetwork/HideMessage', { messageId: id });
                 if (json.success) removeRow(id);
             } else if (action === 'all') {
-                if (!deleteTargetIsMine) {
+                if (!isMine) {
                     alert('You can only delete your own messages for everyone.');
                     return;
                 }
                 const json = await postAction('/VendorNetwork/DeleteMessageForEveryone', { messageId: id });
-                if (json.success) markDeleted(id);
+                if (json.success) markDeleted(id, true);
             }
         } catch {
             alert('Could not delete message.');
@@ -332,7 +406,6 @@
 
     replyCancel?.addEventListener('click', clearReply);
 
-    // Enter = send, Shift+Enter = new line
     input?.addEventListener('keydown', (e) => {
         if (e.key === 'Enter' && !e.shiftKey) {
             e.preventDefault();
@@ -354,6 +427,17 @@
             const json = await res.json();
             if (json.success && json.data?.length) {
                 json.data.forEach(appendMessage);
+            }
+        } catch { /* ignore */ }
+    }, 4000);
+
+    setInterval(async () => {
+        try {
+            const res = await fetch(`/VendorNetwork/GetMessages?threadId=${threadId}&sync=true`);
+            if (!res.ok) return;
+            const json = await res.json();
+            if (json.success && json.data?.length) {
+                json.data.forEach(updateMessageBubble);
             }
         } catch { /* ignore */ }
     }, 4000);

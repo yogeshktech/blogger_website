@@ -338,10 +338,13 @@ CREATE TABLE IF NOT EXISTS "VendorChatMessages"
     "CreatedAt"           TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "EditedAt"            TIMESTAMP NULL,
     "DeletedForEveryone"  BOOLEAN NOT NULL DEFAULT FALSE,
+    "ReplyToMessageId"    INT NULL,
     CONSTRAINT "FK_VendorChatMessages_Thread"
         FOREIGN KEY ("ThreadId") REFERENCES "VendorChatThreads" ("Id") ON DELETE CASCADE,
     CONSTRAINT "FK_VendorChatMessages_Sender"
-        FOREIGN KEY ("SenderUserId") REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE
+        FOREIGN KEY ("SenderUserId") REFERENCES "AspNetUsers" ("Id") ON DELETE CASCADE,
+    CONSTRAINT "FK_VendorChatMessages_ReplyTo"
+        FOREIGN KEY ("ReplyToMessageId") REFERENCES "VendorChatMessages" ("Id") ON DELETE SET NULL
 );
 
 CREATE INDEX IF NOT EXISTS "IX_VendorChatMessages_ThreadId"

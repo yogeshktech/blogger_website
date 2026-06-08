@@ -3,6 +3,10 @@
 @{
     var displayName = string.IsNullOrWhiteSpace(Model.SenderName) ? "Vendor" : Model.SenderName;
     var deleted = Model.DeletedForEveryone;
+    var deletedText = Model.IsMine ? "You deleted this message" : "This message was deleted";
+    var hasReply = Model.ReplyToMessageId.HasValue;
+    var replyName = Model.IsMine && Model.ReplyToSenderName == displayName ? "You" : (Model.ReplyToSenderName ?? "Vendor");
+    var replyText = Model.ReplyToDeleted ? "This message was deleted" : (Model.ReplyToContent ?? "");
 }
 
 <div class="vendor-chat-row @(Model.IsMine ? "mine" : "theirs")" data-row-id="@Model.Id">
@@ -21,8 +25,15 @@
                 <span class="chat-edited-tag">edited</span>
             }
         </div>
+        @if (hasReply && !deleted)
+        {
+            <div class="chat-quote-block">
+                <strong>@replyName</strong>
+                <p>@(string.IsNullOrWhiteSpace(replyText) ? "This message was deleted" : replyText)</p>
+            </div>
+        }
         <div class="vendor-chat-text @(deleted ? "chat-deleted-text" : "")">
-            @(deleted ? "This message was deleted" : Model.Content)
+            @(deleted ? deletedText : Model.Content)
         </div>
     </div>
 </div>

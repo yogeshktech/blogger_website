@@ -21,7 +21,7 @@ public class CommentApiController : ControllerBase
         _businessLayer.GetCommentsByBlog(blogId);
 
     [HttpPost]
-    [AllowAnonymous]
+    [Authorize]
     public Task<IActionResult> Add([FromForm] IFormCollection form) =>
         _businessLayer.AddComment(form, User);
 
@@ -36,7 +36,7 @@ public class CommentApiController : ControllerBase
         _businessLayer.ApproveComment(id, isApproved, User);
 
     [HttpDelete("{id:int}")]
-    [Authorize(Roles = $"{AppRoles.Blogger},{AppRoles.SuperAdmin}")]
+    [Authorize]
     public Task<IActionResult> Delete(int id) =>
         _businessLayer.DeleteComment(id, User);
 }

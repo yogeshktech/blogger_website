@@ -56,9 +56,11 @@ public class BlogController : Controller
         var canModerate = await _businessLayer.CanModerateBlogComments(blog.Id, User);
 
         string? displayName = null;
+        string? currentUserId = null;
         if (User.Identity?.IsAuthenticated == true)
         {
             var user = await _userManager.GetUserAsync(User);
+            currentUserId = user?.Id;
             displayName = user?.FullName ?? user?.Email ?? user?.UserName;
         }
 
@@ -69,22 +71,22 @@ public class BlogController : Controller
             CommentThreads = CommentHelper.BuildThread(flatComments),
             TotalCommentCount = CommentHelper.CountAll(flatComments),
             CanModerateComments = canModerate,
-            CurrentUserDisplayName = displayName
+            CurrentUserDisplayName = displayName,
+            CurrentUserId = currentUserId
         };
         ViewData["Title"] = blog.Title;
         return View(model);
     }
 
     [HttpPost]
+    [Authorize]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddComment(string slug, int blogId, string content, string? authorName, string? authorEmail, int? parentId)
+    public async Task<IActionResult> AddComment(string slug, int blogId, string content, int? parentId)
     {
         var form = new FormCollection(new Dictionary<string, Microsoft.Extensions.Primitives.StringValues>
         {
             ["BlogId"] = blogId.ToString(),
             ["Content"] = content,
-            ["AuthorName"] = authorName ?? "",
-            ["AuthorEmail"] = authorEmail ?? "",
             ["ParentId"] = parentId?.ToString() ?? ""
         });
 
@@ -97,8 +99,21 @@ public class BlogController : Controller
     }
 
     [HttpPost]
+    [Authorize]
     [ValidateAntiForgeryToken]
-    [Authorize(Roles = $"{AppRoles.Blogger},{AppRoles.SuperAdmin}")]
+    public async Task<IActionResult> EditComment(int id, string slug, string content)
+    {
+        var result = await _businessLayer.EditComment(id, content, slug, User);
+        TempData["CommentMessage"] = result is OkObjectResult
+            ? "Comment updated."
+            : "You cannot edit this comment.";
+
+        return RedirectToAction(nameof(Details), new { slug });
+    }
+
+    [HttpPost]
+    [Authorize]
+    [ValidateAntiForgeryToken]
     public async Task<IActionResult> DeleteComment(int id, string slug)
     {
         var result = await _businessLayer.DeleteComment(id, User);

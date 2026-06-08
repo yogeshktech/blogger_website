@@ -39,6 +39,10 @@ public class VendorChatMessage
     public bool IsMine { get; set; }
     public DateTime? EditedAt { get; set; }
     public bool DeletedForEveryone { get; set; }
+    public int? ReplyToMessageId { get; set; }
+    public string? ReplyToSenderName { get; set; }
+    public string? ReplyToContent { get; set; }
+    public bool ReplyToDeleted { get; set; }
 }
 
 public static class VendorConnectionStatus

@@ -21,6 +21,7 @@ public class BlogDetailViewModel
     public int TotalCommentCount { get; set; }
     public bool CanModerateComments { get; set; }
     public string? CurrentUserDisplayName { get; set; }
+    public string? CurrentUserId { get; set; }
 }
 
 public class HomeViewModel

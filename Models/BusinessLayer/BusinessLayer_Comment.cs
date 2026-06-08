@@ -9,6 +9,7 @@ namespace Blogger_website.Models.BusinessLayer;
 public partial interface IBusinessLayer
 {
     Task<IActionResult> AddComment(IFormCollection form, ClaimsPrincipal? user);
+    Task<IActionResult> EditComment(int id, string content, string slug, ClaimsPrincipal user);
     Task<IActionResult> GetCommentsByBlog(int blogId);
     Task<IActionResult> ApproveComment(int id, bool isApproved, ClaimsPrincipal user);
     Task<IActionResult> DeleteComment(int id, ClaimsPrincipal user);
@@ -20,13 +21,19 @@ public partial class BusinessLayer
 {
     private async Task<bool> CanManageCommentAsync(Comment comment, ClaimsPrincipal user)
     {
-        if (IsSuperAdmin(user)) return true;
-
-        if (!user.IsInRole(AppRoles.Blogger))
+        if (!user.Identity?.IsAuthenticated ?? true)
             return false;
 
         var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
         if (string.IsNullOrEmpty(userId))
+            return false;
+
+        if (!string.IsNullOrEmpty(comment.UserId) && comment.UserId == userId)
+            return true;
+
+        if (IsSuperAdmin(user)) return true;
+
+        if (!user.IsInRole(AppRoles.Blogger))
             return false;
 
         var blog = await _databaseLayer.GetBlogByIdAsync(comment.BlogId);
@@ -51,6 +58,9 @@ public partial class BusinessLayer
 
     public async Task<IActionResult> AddComment(IFormCollection form, ClaimsPrincipal? user)
     {
+        if (user?.Identity?.IsAuthenticated != true)
+            return new UnauthorizedObjectResult(new { Success = false, Message = "Please log in to comment" });
+
         if (!int.TryParse(form["BlogId"], out var blogId))
             return new BadRequestObjectResult(new { Success = false, Message = "Valid BlogId is required" });
 
@@ -73,25 +83,10 @@ public partial class BusinessLayer
                     return new BadRequestObjectResult(new { Success = false, Message = "Invalid reply target" });
             }
 
-            string authorName;
-            string? authorEmail = null;
-            string? userId = null;
-
-            if (user?.Identity?.IsAuthenticated == true)
-            {
-                userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
-                var appUser = await _userManager.FindByIdAsync(userId!);
-                authorName = appUser?.FullName ?? appUser?.Email ?? appUser?.UserName ?? "Guest";
-                authorEmail = appUser?.Email;
-            }
-            else
-            {
-                authorName = form["AuthorName"].ToString().Trim();
-                authorEmail = form["AuthorEmail"].ToString().Trim();
-
-                if (string.IsNullOrWhiteSpace(authorName))
-                    return new BadRequestObjectResult(new { Success = false, Message = "Author name is required" });
-            }
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            var appUser = await _userManager.FindByIdAsync(userId!);
+            var authorName = appUser?.FullName ?? appUser?.Email ?? appUser?.UserName ?? "User";
+            var authorEmail = appUser?.Email;
 
             var comment = new Comment
             {
@@ -114,6 +109,34 @@ public partial class BusinessLayer
                 Message = parentId.HasValue ? "Reply posted" : "Comment added",
                 Data = comment
             });
+        }
+        catch (Exception ex)
+        {
+            return new ObjectResult(new { Success = false, Message = ex.Message }) { StatusCode = 500 };
+        }
+    }
+
+    public async Task<IActionResult> EditComment(int id, string content, string slug, ClaimsPrincipal user)
+    {
+        content = content.Trim();
+        if (string.IsNullOrWhiteSpace(content))
+            return new BadRequestObjectResult(new { Success = false, Message = "Comment content is required" });
+
+        try
+        {
+            var comment = await _databaseLayer.GetCommentByIdAsync(id);
+            if (comment == null)
+                return new NotFoundObjectResult(new { Success = false, Message = "Comment not found" });
+
+            if (!await CanManageCommentAsync(comment, user))
+                return new ForbidResult();
+
+            var userId = user.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (string.IsNullOrEmpty(comment.UserId) || comment.UserId != userId)
+                return new ForbidResult();
+
+            await _databaseLayer.UpdateCommentContentAsync(id, content);
+            return new OkObjectResult(new { Success = true, Message = "Comment updated" });
         }
         catch (Exception ex)
         {

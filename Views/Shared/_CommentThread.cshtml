@@ -1,12 +1,14 @@
-@model (Blogger_website.Models.Entities.Comment Comment, Blogger_website.Models.Entities.Blog Blog, bool CanModerate, int Depth, string? CurrentUserName)
+@model (Blogger_website.Models.Entities.Comment Comment, Blogger_website.Models.Entities.Blog Blog, bool CanModerate, int Depth, string? CurrentUserName, string? CurrentUserId)
 
 @{
     var comment = Model.Comment;
     var blog = Model.Blog;
-    var displayName = string.IsNullOrWhiteSpace(comment.AuthorName) ? "Guest" : comment.AuthorName;
+    var displayName = string.IsNullOrWhiteSpace(comment.AuthorName) ? "User" : comment.AuthorName;
     var avatar = displayName.Length > 0 ? displayName[..1].ToUpper() : "?";
     var margin = Model.Depth * 1.75;
     var isLoggedIn = User.Identity?.IsAuthenticated == true;
+    var isOwner = isLoggedIn && !string.IsNullOrEmpty(Model.CurrentUserId) && comment.UserId == Model.CurrentUserId;
+    var canDelete = Model.CanModerate || isOwner;
 }
 
 <div class="comment-item @(Model.Depth > 0 ? "comment-reply" : "")" style="@(Model.Depth > 0 ? $"margin-left:{margin}rem;" : "")">
@@ -20,9 +22,22 @@
             }
             <time>@comment.CreatedAt.ToString("dd MMM yyyy, HH:mm")</time>
         </div>
-        <p>@comment.Content</p>
+        <p class="comment-content" id="comment-content-@comment.Id">@comment.Content</p>
         <div class="comment-actions">
-            @if (Model.CanModerate)
+            @if (isOwner)
+            {
+                <details class="comment-edit-details">
+                    <summary class="comment-action-link">Edit</summary>
+                    <form asp-controller="Blog" asp-action="EditComment" method="post" class="comment-edit-form">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="id" value="@comment.Id" />
+                        <input type="hidden" name="slug" value="@blog.Slug" />
+                        <textarea name="content" class="form-control" rows="3" required>@comment.Content</textarea>
+                        <button type="submit" class="btn-brand btn-sm">Save</button>
+                    </form>
+                </details>
+            }
+            @if (canDelete)
             {
                 <form asp-controller="Blog" asp-action="DeleteComment" method="post" style="display:inline;"
                       onsubmit="return confirm('Delete this comment and its replies?');">
@@ -36,42 +51,36 @@
             }
         </div>
 
-        <details class="comment-reply-details">
-            <summary class="comment-reply-summary">Reply</summary>
-            <form asp-controller="Blog" asp-action="AddComment" method="post" class="comment-reply-form">
-                @Html.AntiForgeryToken()
-                <input type="hidden" name="blogId" value="@blog.Id" />
-                <input type="hidden" name="slug" value="@blog.Slug" />
-                <input type="hidden" name="parentId" value="@comment.Id" />
+        @if (isLoggedIn)
+        {
+            <details class="comment-reply-details">
+                <summary class="comment-reply-summary">Reply</summary>
+                <form asp-controller="Blog" asp-action="AddComment" method="post" class="comment-reply-form">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="blogId" value="@blog.Id" />
+                    <input type="hidden" name="slug" value="@blog.Slug" />
+                    <input type="hidden" name="parentId" value="@comment.Id" />
 
-                @if (!isLoggedIn)
-                {
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label class="form-label">Your Name</label>
-                            <input type="text" name="authorName" class="form-control" required placeholder="Your name" />
-                        </div>
-                        <div class="form-group">
-                            <label class="form-label">Email (optional)</label>
-                            <input type="email" name="authorEmail" class="form-control" placeholder="you@email.com" />
-                        </div>
+                    @if (!string.IsNullOrEmpty(Model.CurrentUserName))
+                    {
+                        <p class="comment-posting-as">Replying as <strong>@Model.CurrentUserName</strong></p>
+                    }
+
+                    <div class="form-group">
+                        <textarea name="content" class="form-control" rows="3" required placeholder="Write a reply..."></textarea>
                     </div>
-                }
-                else if (!string.IsNullOrEmpty(Model.CurrentUserName))
-                {
-                    <p class="comment-posting-as">Replying as <strong>@Model.CurrentUserName</strong></p>
-                }
-
-                <div class="form-group">
-                    <textarea name="content" class="form-control" rows="3" required placeholder="Write a reply..."></textarea>
-                </div>
-                <button type="submit" class="btn-brand btn-sm">Post Reply</button>
-            </form>
-        </details>
+                    <button type="submit" class="btn-brand btn-sm">Post Reply</button>
+                </form>
+            </details>
+        }
+        else
+        {
+            <p class="comment-login-hint"><a asp-area="Identity" asp-page="/Account/Login" asp-route-returnUrl="@Context.Request.Path">Log in</a> to reply</p>
+        }
 
         @foreach (var reply in comment.Replies)
         {
-            @await Html.PartialAsync("_CommentThread", (reply, blog, Model.CanModerate, Model.Depth + 1, Model.CurrentUserName))
+            @await Html.PartialAsync("_CommentThread", (reply, blog, Model.CanModerate, Model.Depth + 1, Model.CurrentUserName, Model.CurrentUserId))
         }
     </div>
 </div>

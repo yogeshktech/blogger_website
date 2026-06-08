@@ -10,6 +10,7 @@ public partial interface IDatabaseLayer
     Task<Comment?> GetCommentByIdAsync(int id);
     Task<int> CreateCommentAsync(Comment comment);
     Task<bool> UpdateCommentApprovalAsync(int id, bool isApproved);
+    Task<bool> UpdateCommentContentAsync(int id, string content);
     Task<bool> DeleteCommentAsync(int id);
 }
 
@@ -132,6 +133,20 @@ public partial class DatabaseLayer
 
         await using var cmd = new NpgsqlCommand(sql, conn);
         cmd.Parameters.AddWithValue("isApproved", isApproved);
+        cmd.Parameters.AddWithValue("id", id);
+
+        return await cmd.ExecuteNonQueryAsync() > 0;
+    }
+
+    public async Task<bool> UpdateCommentContentAsync(int id, string content)
+    {
+        await using var conn = new NpgsqlConnection(DbConnection);
+        await conn.OpenAsync();
+
+        const string sql = """UPDATE "Comments" SET "Content" = @content WHERE "Id" = @id""";
+
+        await using var cmd = new NpgsqlCommand(sql, conn);
+        cmd.Parameters.AddWithValue("content", content);
         cmd.Parameters.AddWithValue("id", id);
 
         return await cmd.ExecuteNonQueryAsync() > 0;

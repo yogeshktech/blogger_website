@@ -736,6 +736,27 @@ textarea.form-control { min-height: 120px; resize: vertical; }
 .chat-reply-bar-inner strong { display: block; font-size: 0.8rem; color: var(--primary); }
 .chat-reply-bar-inner p { margin: 0.15rem 0 0; font-size: 0.78rem; color: var(--text-muted); }
 
+.chat-quote-block {
+    border-left: 3px solid var(--primary);
+    padding: 0.35rem 0.6rem;
+    margin-bottom: 0.4rem;
+    background: rgba(255, 255, 255, 0.65);
+    border-radius: 0 6px 6px 0;
+}
+.chat-quote-block strong { display: block; font-size: 0.75rem; color: var(--primary); }
+.chat-quote-block p {
+    margin: 0.1rem 0 0; font-size: 0.78rem; color: var(--text-muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 280px;
+}
+.vendor-chat-row.theirs .chat-quote-block { background: rgba(248, 250, 252, 0.9); }
+
+.comment-action-link { cursor: pointer; font-size: 0.82rem; color: var(--primary); }
+.comment-edit-details summary { list-style: none; }
+.comment-edit-details summary::-webkit-details-marker { display: none; }
+.comment-edit-form { margin-top: 0.5rem; }
+.comment-edit-form textarea { margin-bottom: 0.5rem; }
+.comment-login-hint, .comment-login-prompt { font-size: 0.9rem; color: var(--text-muted); }
+
 .icon-btn {
     display: inline-grid; place-items: center; width: 26px; height: 26px;
     border: 1px solid var(--border); border-radius: 6px; background: #fff;
