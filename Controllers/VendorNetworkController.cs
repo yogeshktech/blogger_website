@@ -154,7 +154,8 @@ public class VendorNetworkController : Controller
             Thread = thread,
             Messages = messages,
             OtherUserName = otherUser?.FullName ?? otherUser?.Email ?? "Vendor",
-            CurrentUserName = currentUser?.FullName ?? currentUser?.Email ?? currentUser?.UserName ?? "You"
+            CurrentUserName = currentUser?.FullName ?? currentUser?.Email ?? currentUser?.UserName ?? "You",
+            CurrentUserId = userId
         });
     }
 
@@ -198,6 +199,7 @@ public class VendorNetworkController : Controller
                 createdAt = m.CreatedAt,
                 editedAt = m.EditedAt,
                 senderName = m.SenderName,
+                senderUserId = m.SenderUserId,
                 isMine = m.IsMine,
                 deletedForEveryone = m.DeletedForEveryone
             })
@@ -212,7 +214,11 @@ public class VendorNetworkController : Controller
         if (pending != null) return pending;
 
         var result = await _businessLayer.EditVendorChatMessage(messageId, content, User);
-        return result is OkObjectResult ok ? Json(ok.Value) : BadRequest(result);
+        if (result is OkObjectResult ok)
+            return Json(ok.Value);
+        if (result is BadRequestObjectResult bad)
+            return Json(bad.Value);
+        return Json(new { success = false, message = "You can only edit your own messages" });
     }
 
     [HttpPost]

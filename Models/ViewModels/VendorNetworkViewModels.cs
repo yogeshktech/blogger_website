@@ -35,4 +35,5 @@ public class VendorChatViewModel
     public List<VendorChatMessage> Messages { get; set; } = [];
     public string OtherUserName { get; set; } = string.Empty;
     public string CurrentUserName { get; set; } = string.Empty;
+    public string CurrentUserId { get; set; } = string.Empty;
 }

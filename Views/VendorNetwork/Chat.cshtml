@@ -10,19 +10,41 @@
     <div class="vendor-chat-messages" id="chatMessages"
          data-thread-id="@Model.Thread.Id"
          data-last-id="@(Model.Messages.LastOrDefault()?.Id ?? 0)"
-         data-current-user="@Model.CurrentUserName">
+         data-current-user="@Model.CurrentUserName"
+         data-current-user-id="@Model.CurrentUserId">
         @foreach (var msg in Model.Messages)
         {
             @await Html.PartialAsync("_ChatMessage", msg)
         }
     </div>
     <div class="vendor-chat-compose">
+        <div id="chatReplyBar" class="chat-reply-bar hidden">
+            <div class="chat-reply-bar-inner">
+                <div>
+                    <strong id="chatReplyToName"></strong>
+                    <p id="chatReplyToText"></p>
+                </div>
+                <button type="button" id="chatReplyCancel" class="icon-btn" title="Cancel reply">×</button>
+            </div>
+        </div>
         <form asp-action="SendMessage" method="post" id="chatForm">
             @Html.AntiForgeryToken()
             <input type="hidden" name="threadId" value="@Model.Thread.Id" />
-            <textarea name="content" id="chatInput" class="form-control" rows="2" required placeholder="Type a message..."></textarea>
+            <textarea name="content" id="chatInput" class="form-control" rows="2" required placeholder="Type a message... (Enter to send)"></textarea>
             <button type="submit" class="btn-brand">Send</button>
         </form>
+    </div>
+</div>
+
+<div id="chatContextMenu" class="chat-context-menu hidden" role="menu"></div>
+
+<div id="chatDeleteModal" class="chat-modal hidden">
+    <div class="chat-modal-backdrop" data-close="delete"></div>
+    <div class="chat-modal-sheet">
+        <h4>Delete message?</h4>
+        <button type="button" class="chat-modal-btn chat-modal-danger" data-delete="all" id="chatDeleteAllBtn">Delete for everyone</button>
+        <button type="button" class="chat-modal-btn chat-modal-danger" data-delete="me">Delete for me</button>
+        <button type="button" class="chat-modal-btn chat-modal-cancel" data-delete="cancel">Cancel</button>
     </div>
 </div>
 

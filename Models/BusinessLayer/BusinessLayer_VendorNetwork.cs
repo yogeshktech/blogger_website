@@ -159,6 +159,7 @@ public partial class BusinessLayer
                     Content = content,
                     CreatedAt = DateTime.UtcNow,
                     SenderName = senderName,
+                    SenderUserId = userId,
                     IsMine = true,
                     DeletedForEveryone = false,
                     EditedAt = (DateTime?)null
@@ -194,7 +195,7 @@ public partial class BusinessLayer
                 return new ForbidResult();
 
             if (message.SenderUserId != userId)
-                return new ForbidResult();
+                return new BadRequestObjectResult(new { Success = false, Message = "You can only edit your own messages" });
 
             if (message.DeletedForEveryone)
                 return new BadRequestObjectResult(new { Success = false, Message = "Message was deleted" });
@@ -265,7 +266,7 @@ public partial class BusinessLayer
                 return new ForbidResult();
 
             if (message.SenderUserId != userId)
-                return new ForbidResult();
+                return new BadRequestObjectResult(new { Success = false, Message = "You can only delete your own messages for everyone" });
 
             await _databaseLayer.DeleteChatMessageForEveryoneAsync(messageId);
             return new OkObjectResult(new { Success = true, Message = "Message deleted for everyone" });

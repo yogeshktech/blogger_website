@@ -652,8 +652,11 @@ textarea.form-control { min-height: 120px; resize: vertical; }
 .vendor-chat-row.theirs { justify-content: flex-end; }
 .vendor-chat-bubble {
     max-width: min(75%, 520px); padding: 0.65rem 0.95rem; border-radius: 14px;
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06);
+    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06); cursor: pointer;
+    transition: box-shadow var(--transition), transform var(--transition);
 }
+.chat-bubble-selectable:hover { box-shadow: 0 2px 8px rgba(15, 23, 42, 0.1); }
+.chat-bubble-active { outline: 2px solid var(--primary); outline-offset: 2px; }
 .vendor-chat-row.mine .vendor-chat-bubble {
     background: #eef2ff; border: 1px solid #c7d2fe;
     border-bottom-left-radius: 4px;
@@ -672,15 +675,67 @@ textarea.form-control { min-height: 120px; resize: vertical; }
     display: flex; gap: 0.75rem; align-items: flex-end;
 }
 .vendor-chat-compose form { display: flex; gap: 0.75rem; width: 100%; align-items: flex-end; }
-.vendor-chat-compose textarea { flex: 1; resize: vertical; min-height: 44px; }
+.vendor-chat-compose textarea { flex: 1; resize: none; min-height: 44px; max-height: 120px; }
 .chat-sender-name { color: #334155; font-weight: 700; font-size: 0.78rem; }
 .chat-edited-tag { font-size: 0.68rem; color: var(--text-muted); font-style: italic; }
 .chat-deleted-text { font-style: italic; color: var(--text-muted) !important; }
-.vendor-chat-msg-actions {
-    display: flex; gap: 0.25rem; margin-top: 0.35rem; flex-wrap: wrap;
+
+/* WhatsApp-style chat menu & delete modal */
+.chat-context-menu {
+    position: fixed; z-index: 10000; min-width: 200px;
+    background: #fff; border-radius: 12px; box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+    padding: 0.35rem 0; overflow: hidden;
 }
-.vendor-chat-row.mine .vendor-chat-msg-actions { justify-content: flex-start; }
-.vendor-chat-row.theirs .vendor-chat-msg-actions { justify-content: flex-end; }
+.chat-context-menu.hidden { display: none; }
+.chat-menu-item {
+    display: flex; align-items: center; gap: 0.85rem; width: 100%;
+    padding: 0.75rem 1.1rem; border: none; background: none;
+    font-size: 0.9rem; color: #334155; cursor: pointer; text-align: left;
+}
+.chat-menu-item:hover { background: #f1f5f9; }
+.chat-menu-item.danger { color: #dc2626; }
+.chat-menu-item svg { flex-shrink: 0; opacity: 0.75; }
+
+.chat-modal {
+    position: fixed; inset: 0; z-index: 10001;
+    display: flex; align-items: center; justify-content: center;
+}
+.chat-modal.hidden { display: none; }
+.chat-modal-backdrop {
+    position: absolute; inset: 0; background: rgba(15, 23, 42, 0.45);
+}
+.chat-modal-sheet {
+    position: relative; background: #fff; border-radius: 14px;
+    padding: 1.25rem 1rem 1rem; min-width: min(320px, 90vw);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.2); text-align: center;
+}
+.chat-modal-sheet h4 {
+    margin: 0 0 1rem; font-size: 1.05rem; font-weight: 700; color: #334155;
+}
+.chat-modal-btn {
+    display: block; width: 100%; padding: 0.85rem 1rem; margin-bottom: 0.5rem;
+    border: none; border-radius: 999px; font-size: 0.95rem; font-weight: 600;
+    cursor: pointer; background: #f1f5f9; color: #334155;
+}
+.chat-modal-btn:last-child { margin-bottom: 0; }
+.chat-modal-btn:hover { background: #e2e8f0; }
+.chat-modal-danger { color: #dc2626; background: #fef2f2; }
+.chat-modal-danger:hover { background: #fee2e2; }
+.chat-modal-cancel { color: var(--text-muted); }
+
+.chat-reply-bar {
+    padding: 0.5rem 1.25rem 0; border-top: 1px solid var(--border);
+    background: #f8fafc;
+}
+.chat-reply-bar.hidden { display: none; }
+.chat-reply-bar-inner {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 0.5rem;
+    padding: 0.5rem 0.75rem; border-left: 3px solid var(--primary);
+    background: #fff; border-radius: 0 8px 8px 0;
+}
+.chat-reply-bar-inner strong { display: block; font-size: 0.8rem; color: var(--primary); }
+.chat-reply-bar-inner p { margin: 0.15rem 0 0; font-size: 0.78rem; color: var(--text-muted); }
+
 .icon-btn {
     display: inline-grid; place-items: center; width: 26px; height: 26px;
     border: 1px solid var(--border); border-radius: 6px; background: #fff;
