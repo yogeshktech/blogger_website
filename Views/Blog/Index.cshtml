@@ -93,7 +93,9 @@
 
                         @if (!string.IsNullOrEmpty(blog.FeaturedImage))
 
-                        { <img src="@blog.FeaturedImage" alt="@blog.Title" loading="lazy" /> }
+                        {
+                            <a asp-action="Details" asp-route-slug="@blog.Slug" class="read-link"> <img src="@blog.FeaturedImage" alt="@blog.Title" loading="lazy" /> </a>
+                        }
 
                     </div>
 
